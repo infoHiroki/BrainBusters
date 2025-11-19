@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,21 +7,66 @@ import {
   Animated,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getRandomConcept, concepts } from './src/data/concepts';
+import { getRandomConcept, Concept } from './src/data/concepts';
 import { battle, BattleResult } from './src/utils/battle';
 import { ConceptCard } from './src/components/ConceptCard';
+import { GachaScreen } from './src/screens/GachaScreen';
+import { CollectionScreen } from './src/screens/CollectionScreen';
+import {
+  PlayerData,
+  loadPlayerData,
+  updateAfterBattle,
+  getRandomOwnedConcept,
+  getLevelBonus,
+  getCollectionRate,
+} from './src/store/playerStore';
 
+type Screen = 'home' | 'gacha' | 'collection';
 type GameState = 'ready' | 'battling' | 'result';
 
+// レベルボーナスを適用したバトル
+const battleWithLevel = (
+  playerConcept: Concept,
+  playerLevel: number,
+  enemyConcept: Concept
+): BattleResult => {
+  const result = battle(playerConcept, enemyConcept);
+
+  // プレイヤーにレベルボーナスを適用
+  const levelBonus = getLevelBonus(playerLevel);
+  const adjustedPlayerPower = Math.min(100, result.playerPower + levelBonus);
+
+  // 勝敗を再計算
+  let winner: 'player' | 'enemy' | 'draw';
+  if (adjustedPlayerPower > result.enemyPower) {
+    winner = 'player';
+  } else if (result.enemyPower > adjustedPlayerPower) {
+    winner = 'enemy';
+  } else {
+    winner = 'draw';
+  }
+
+  return {
+    ...result,
+    playerPower: adjustedPlayerPower,
+    winner,
+    powerDifference: Math.abs(adjustedPlayerPower - result.enemyPower),
+  };
+};
+
 export default function App() {
+  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [gameState, setGameState] = useState<GameState>('ready');
   const [result, setResult] = useState<BattleResult | null>(null);
-  const [wins, setWins] = useState(0);
-  const [losses, setLosses] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
 
   const playerScale = useRef(new Animated.Value(0)).current;
   const enemyScale = useRef(new Animated.Value(0)).current;
@@ -30,15 +75,39 @@ export default function App() {
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const resultScale = useRef(new Animated.Value(0.5)).current;
 
-  const startBattle = () => {
-    setGameState('battling');
+  // プレイヤーデータを読み込む
+  useEffect(() => {
+    const init = async () => {
+      const data = await loadPlayerData();
+      setPlayerData(data);
+      setIsLoading(false);
+    };
+    init();
+  }, []);
 
-    const playerConcept = getRandomConcept();
+  const startBattle = async () => {
+    if (!playerData) return;
+
+    setGameState('battling');
+    setEarnedPoints(null);
+
+    // プレイヤーの概念をランダムに選択
+    let playerConcept: Concept;
+    let playerLevel = 1;
+
+    const random = getRandomOwnedConcept(playerData);
+    if (random) {
+      playerConcept = random.concept;
+      playerLevel = random.owned.level;
+    } else {
+      playerConcept = getRandomConcept();
+    }
+
     const enemyConcept = getRandomConcept();
-    const battleResult = battle(playerConcept, enemyConcept);
+    const battleResult = battleWithLevel(playerConcept, playerLevel, enemyConcept);
     setResult(battleResult);
 
-    // リセット
+    // アニメーションリセット
     playerScale.setValue(0);
     enemyScale.setValue(0);
     vsOpacity.setValue(0);
@@ -46,16 +115,14 @@ export default function App() {
     resultOpacity.setValue(0);
     resultScale.setValue(0.5);
 
-    // アニメーション（自分のカードが先に表示）
+    // アニメーション
     Animated.sequence([
-      // プレイヤーカード (下から先に表示)
       Animated.spring(playerScale, {
         toValue: 1,
         friction: 6,
         tension: 100,
         useNativeDriver: true,
       }),
-      // VS
       Animated.parallel([
         Animated.timing(vsOpacity, {
           toValue: 1,
@@ -69,14 +136,12 @@ export default function App() {
           useNativeDriver: true,
         }),
       ]),
-      // 敵カード (上に後から表示)
       Animated.spring(enemyScale, {
         toValue: 1,
         friction: 6,
         tension: 100,
         useNativeDriver: true,
       }),
-      // 結果
       Animated.parallel([
         Animated.timing(resultOpacity, {
           toValue: 1,
@@ -90,16 +155,25 @@ export default function App() {
           useNativeDriver: true,
         }),
       ]),
-    ]).start(() => {
+    ]).start(async () => {
       setGameState('result');
 
-      if (battleResult.winner === 'player') {
-        setWins((w) => w + 1);
-        setStreak((s) => s + 1);
-      } else if (battleResult.winner === 'enemy') {
-        setLosses((l) => l + 1);
-        setStreak(0);
-      }
+      const won = battleResult.winner === 'player';
+      const newStreak = won ? streak + 1 : 0;
+      setStreak(newStreak);
+
+      // ポイント計算
+      const points = won ? 10 + newStreak * 2 : 3;
+      setEarnedPoints(points);
+
+      // プレイヤーデータを更新
+      const newData = await updateAfterBattle(
+        playerData,
+        won,
+        newStreak,
+        playerConcept.id
+      );
+      setPlayerData(newData);
     });
   };
 
@@ -107,9 +181,9 @@ export default function App() {
     if (!result) return '';
     switch (result.winner) {
       case 'player':
-        return `勝利! +${result.powerDifference}`;
+        return `勝利!`;
       case 'enemy':
-        return `敗北 -${result.powerDifference}`;
+        return `敗北`;
       case 'draw':
         return '引き分け';
     }
@@ -127,6 +201,46 @@ export default function App() {
     }
   };
 
+  // ローディング中
+  if (isLoading || !playerData) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#6C5CE7" />
+        <Text style={styles.loadingText}>読み込み中...</Text>
+      </View>
+    );
+  }
+
+  // ガチャ画面
+  if (currentScreen === 'gacha') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <GachaScreen
+          playerData={playerData}
+          onGachaPulled={setPlayerData}
+          onBack={() => setCurrentScreen('home')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // 図鑑画面
+  if (currentScreen === 'collection') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <CollectionScreen
+          playerData={playerData}
+          onBack={() => setCurrentScreen('home')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // ホーム画面（バトル）
+  const collectionRate = getCollectionRate(playerData);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -142,16 +256,27 @@ export default function App() {
         {/* ヘッダー */}
         <View style={styles.header}>
           <Text style={styles.title}>概念バトル</Text>
-          <View style={styles.scoreContainer}>
-            <Text style={styles.score}>
-              <Text style={styles.winScore}>{wins}勝</Text>
-              {' - '}
-              <Text style={styles.loseScore}>{losses}敗</Text>
-            </Text>
-            {streak >= 2 && (
-              <Text style={styles.streakText}>{streak}連勝中!</Text>
-            )}
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>ポイント</Text>
+              <Text style={styles.statValue}>{playerData.points}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>戦績</Text>
+              <Text style={styles.statValue}>
+                <Text style={styles.winScore}>{playerData.totalWins}</Text>
+                {' - '}
+                <Text style={styles.loseScore}>{playerData.totalLosses}</Text>
+              </Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>収集</Text>
+              <Text style={styles.statValue}>{collectionRate.percentage}%</Text>
+            </View>
           </View>
+          {streak >= 2 && (
+            <Text style={styles.streakText}>{streak}連勝中!</Text>
+          )}
         </View>
 
         {/* メインエリア */}
@@ -163,16 +288,16 @@ export default function App() {
           {gameState === 'ready' ? (
             <View style={styles.readyContainer}>
               <Text style={styles.readyText}>
-                ボタンを押して{'\n'}概念を召喚せよ
+                ボタンを押して{'\n'}バトル開始
               </Text>
               <Text style={styles.hintText}>
-                {concepts.length}種の概念が戦いを待っている
+                {playerData.ownedConcepts.length}種の概念を所持
               </Text>
             </View>
           ) : (
             result && (
               <View style={styles.battleContainer}>
-                {/* 敵カード (上) */}
+                {/* 敵カード */}
                 <View style={styles.cardSection}>
                   <Text style={styles.playerLabel}>ENEMY</Text>
                   <ConceptCard
@@ -198,7 +323,7 @@ export default function App() {
                   <Text style={styles.vsText}>VS</Text>
                 </Animated.View>
 
-                {/* プレイヤーカード (下) */}
+                {/* プレイヤーカード */}
                 <View style={styles.cardSection}>
                   <Text style={styles.playerLabel}>YOU</Text>
                   <ConceptCard
@@ -225,6 +350,9 @@ export default function App() {
                     <Text style={[styles.resultText, { color: getResultColor() }]}>
                       {getResultMessage()}
                     </Text>
+                    {earnedPoints && (
+                      <Text style={styles.pointsEarned}>+{earnedPoints} pt</Text>
+                    )}
                   </Animated.View>
                 )}
               </View>
@@ -232,8 +360,25 @@ export default function App() {
           )}
         </ScrollView>
 
-        {/* バトルボタン */}
+        {/* ボタン群 */}
         <View style={styles.buttonContainer}>
+          {/* メニューボタン */}
+          <View style={styles.menuButtons}>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setCurrentScreen('gacha')}
+            >
+              <Text style={styles.menuButtonText}>召喚</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setCurrentScreen('collection')}
+            >
+              <Text style={styles.menuButtonText}>図鑑</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* バトルボタン */}
           <TouchableOpacity
             style={[
               styles.battleButton,
@@ -254,7 +399,7 @@ export default function App() {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.buttonText}>
-                {gameState === 'ready' ? '概念を召喚' : 'もう一度'}
+                {gameState === 'ready' ? 'バトル開始' : 'もう一度'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -269,6 +414,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0a1a',
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#888',
+    marginTop: 16,
+  },
   safeArea: {
     flex: 1,
   },
@@ -276,17 +429,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     paddingBottom: 10,
+    paddingHorizontal: 20,
   },
   title: {
     color: '#fff',
     fontSize: 24,
     fontWeight: 'bold',
   },
-  scoreContainer: {
-    alignItems: 'center',
-    marginTop: 8,
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 16,
   },
-  score: {
+  statBox: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    color: '#888',
+    fontSize: 10,
+  },
+  statValue: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -300,7 +463,7 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 12,
     fontWeight: 'bold',
-    marginTop: 4,
+    marginTop: 8,
   },
   scrollView: {
     flex: 1,
@@ -358,10 +521,34 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
   },
+  pointsEarned: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
   buttonContainer: {
     paddingBottom: 20,
     paddingTop: 10,
     alignItems: 'center',
+  },
+  menuButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  menuButton: {
+    backgroundColor: 'rgba(108, 92, 231, 0.3)',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#6C5CE7',
+  },
+  menuButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   battleButton: {
     borderRadius: 30,
