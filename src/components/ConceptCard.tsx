@@ -88,6 +88,11 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
           <Text style={styles.author}>— {concept.author}</Text>
         )}
 
+        {/* 一言説明 */}
+        <Text style={styles.description} numberOfLines={1}>
+          {concept.description}
+        </Text>
+
         {/* パワー表示 */}
         <View style={styles.powerContainer}>
           <Text style={[styles.powerValue, displayWinner && styles.winnerPower]}>
@@ -175,7 +180,14 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 12,
     fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  description: {
+    color: '#aaa',
+    fontSize: 13,
+    textAlign: 'center',
     marginBottom: 12,
+    paddingHorizontal: 10,
   },
   powerContainer: {
     alignItems: 'center',
