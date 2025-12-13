@@ -263,18 +263,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       showMessage(`${blockGained}ブロック獲得！`);
     }
 
-    // 敵にダメージを与えた場合のアニメーション
+    // 敵にダメージを与えた場合のアニメーション（常に揺れる）
     if (result.damageDealt.length > 0) {
-      shakeAnims.forEach((anim, i) => {
-        if (result.enemiesKilled.includes(i) || (card.effects.some(e => e.target === 'all_enemies'))) {
+      const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
+
+      result.enemies.forEach((enemy, i) => {
+        // ダメージを受けた敵は揺れる
+        const tookDamage = isAllTarget || i === enemyIndex;
+        if (tookDamage && enemy.hp >= 0 && shakeAnims[i]) {
           Animated.sequence([
-            Animated.timing(anim, { toValue: 1, duration: 100, useNativeDriver: true }),
-            Animated.timing(anim, { toValue: 0, duration: 100, useNativeDriver: true }),
-          ]).start();
-        } else if (i === enemyIndex && card.type === 'attack') {
-          Animated.sequence([
-            Animated.timing(anim, { toValue: 1, duration: 100, useNativeDriver: true }),
-            Animated.timing(anim, { toValue: 0, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
           ]).start();
         }
       });
@@ -751,26 +752,31 @@ const styles = StyleSheet.create({
   hpRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   statEmoji: {
-    fontSize: 16,
+    fontSize: 20,
   },
   hpBar: {
     flex: 1,
-    height: 16,
+    height: 24,
     backgroundColor: '#333',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#555',
   },
   hpFill: {
     height: '100%',
   },
   hpText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
-    minWidth: 60,
+    minWidth: 70,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -781,31 +787,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(52, 152, 219, 0.3)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: '#3498db',
   },
   blockDim: {
-    opacity: 0.4,
+    opacity: 0.3,
   },
   blockText: {
     color: '#3498db',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   energyDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 69, 19, 0.5)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   energyText: {
     color: '#FFD700',
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   // ステータス効果表示

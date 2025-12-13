@@ -115,6 +115,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
         <View style={styles.rewardSection}>
           <View style={styles.goldRewardAuto}>
             <Text style={styles.goldText}>💰 +{goldReward} ゴールド獲得！</Text>
+            <Text style={styles.goldTotalText}>所持金: {runState.gold + goldReward} G</Text>
           </View>
         </View>
 
@@ -230,15 +231,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
-    maxWidth: 500,
   },
   contentContainer: {
-    paddingHorizontal: 16,
     paddingBottom: 20,
+    alignItems: 'center',
   },
   rewardSection: {
     marginBottom: 24,
-    overflow: 'visible',
+    width: '100%',
+    maxWidth: 480,
   },
   sectionTitle: {
     color: '#fff',
@@ -259,6 +260,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  goldTotalText: {
+    color: '#f1c40f',
+    fontSize: 14,
+    marginTop: 4,
+  },
   rewardTaken: {
     opacity: 0.5,
     borderColor: '#666',
@@ -273,16 +279,16 @@ const styles = StyleSheet.create({
   },
   cardRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 16,
-    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   cardReward: {
     alignItems: 'center',
+    padding: 4,
   },
   cardSelected: {
-    transform: [{ scale: 1.05 }],
+    // BattleCardのselected propで枠が光るため、ここでは追加スタイルなし
   },
   rarityIndicator: {
     paddingHorizontal: 8,
@@ -302,43 +308,54 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   relicReward: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(155, 89, 182, 0.2)',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#9b59b6',
+    backgroundColor: 'rgba(155, 89, 182, 0.3)',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#FFD700',
     alignItems: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
   relicIcon: {
-    width: 50,
-    height: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 25,
+    width: 80,
+    height: 80,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   relicEmoji: {
-    fontSize: 24,
+    fontSize: 40,
   },
   relicInfo: {
-    flex: 1,
+    alignItems: 'center',
   },
   relicName: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#FFD700',
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   relicDescription: {
-    color: '#ccc',
-    fontSize: 12,
-    marginTop: 4,
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
   relicRarity: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginTop: 4,
+    marginTop: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   footer: {
     padding: 16,
