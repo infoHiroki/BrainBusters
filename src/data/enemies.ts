@@ -535,6 +535,73 @@ export const enemyTemplates: EnemyTemplate[] = [
       { id: 'world_state', name: '国家の防壁', intent: { type: 'defend', value: 40 }, weight: 20 },
     ],
   },
+
+  // === 追加ボス（5階ごとに10体体制） ===
+  {
+    id: 206,
+    name: '懐疑の淵',
+    maxHp: 120,
+    isBoss: true,
+    isElite: false,
+    moves: [
+      { id: 'doubt_abyss', name: '疑念の渦', intent: { type: 'attack', value: 20 }, weight: 40 },
+      { id: 'doubt_question', name: '根本的問い', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'doubt_wall', name: '懐疑の壁', intent: { type: 'defend', value: 15 }, weight: 30 },
+    ],
+  },
+  {
+    id: 207,
+    name: '二元論の裂け目',
+    maxHp: 165,
+    isBoss: true,
+    isElite: false,
+    moves: [
+      { id: 'dual_mind', name: '精神の刃', intent: { type: 'attack', value: 28 }, weight: 35 },
+      { id: 'dual_body', name: '物質の重圧', intent: { type: 'attack', value: 22 }, weight: 30 },
+      { id: 'dual_split', name: '分裂', intent: { type: 'debuff' }, weight: 20 },
+      { id: 'dual_unite', name: '統合の試み', intent: { type: 'buff' }, weight: 15 },
+    ],
+  },
+  {
+    id: 208,
+    name: '功利の天秤',
+    maxHp: 200,
+    isBoss: true,
+    isElite: false,
+    moves: [
+      { id: 'util_calc', name: '幸福計算', intent: { type: 'attack', value: 35 }, weight: 35 },
+      { id: 'util_sacrifice', name: '少数の犠牲', intent: { type: 'attack', value: 45 }, weight: 20 },
+      { id: 'util_maximize', name: '最大化', intent: { type: 'buff' }, weight: 25 },
+      { id: 'util_balance', name: '均衡', intent: { type: 'defend', value: 25 }, weight: 20 },
+    ],
+  },
+  {
+    id: 209,
+    name: '意志の深淵',
+    maxHp: 255,
+    isBoss: true,
+    isElite: false,
+    moves: [
+      { id: 'will_blind', name: '盲目の衝動', intent: { type: 'attack', value: 42 }, weight: 35 },
+      { id: 'will_desire', name: '欲望の連鎖', intent: { type: 'debuff' }, weight: 25 },
+      { id: 'will_deny_self', name: '意志の否定', intent: { type: 'attack', value: 55 }, weight: 20 },
+      { id: 'will_art', name: '芸術的昇華', intent: { type: 'defend', value: 32 }, weight: 20 },
+    ],
+  },
+  {
+    id: 210,
+    name: '言語の牢獄',
+    maxHp: 315,
+    isBoss: true,
+    isElite: false,
+    moves: [
+      { id: 'lang_trap', name: '言語の罠', intent: { type: 'attack', value: 48 }, weight: 30 },
+      { id: 'lang_confuse', name: '意味の混乱', intent: { type: 'debuff' }, weight: 25 },
+      { id: 'lang_silence', name: '沈黙', intent: { type: 'attack', value: 60 }, weight: 20 },
+      { id: 'lang_game', name: '言語ゲーム', intent: { type: 'buff' }, weight: 15 },
+      { id: 'lang_wall', name: '言葉の壁', intent: { type: 'defend', value: 38 }, weight: 10 },
+    ],
+  },
 ];
 
 // 敵テンプレートからインスタンスを生成
@@ -620,20 +687,22 @@ export const getEliteEnemies = (): EnemyTemplate[] => {
   return enemyTemplates.filter(t => t.isElite);
 };
 
-// ボスを取得（階層別）- 10階ごとにボス
+// ボスを取得（階層別）- 5階ごとにボス10体
 export const getBossForFloor = (floor: number): EnemyTemplate | undefined => {
-  if (floor === 10) {
-    return enemyTemplates.find(t => t.id === 201); // 虚無
-  } else if (floor === 20) {
-    return enemyTemplates.find(t => t.id === 202); // 永劫回帰
-  } else if (floor === 30) {
-    return enemyTemplates.find(t => t.id === 203); // 絶対精神
-  } else if (floor === 40) {
-    return enemyTemplates.find(t => t.id === 204); // 存在と時間
-  } else if (floor === 50) {
-    return enemyTemplates.find(t => t.id === 205); // 世界精神
-  }
-  return undefined;
+  const bossMap: Record<number, number> = {
+    5: 206,   // 懐疑の淵
+    10: 201,  // 虚無
+    15: 207,  // 二元論の裂け目
+    20: 202,  // 永劫回帰
+    25: 208,  // 功利の天秤
+    30: 203,  // 絶対精神
+    35: 209,  // 意志の深淵
+    40: 204,  // 存在と時間
+    45: 210,  // 言語の牢獄
+    50: 205,  // 世界精神
+  };
+  const bossId = bossMap[floor];
+  return bossId ? enemyTemplates.find(t => t.id === bossId) : undefined;
 };
 
 // ランダムな敵を生成（階層に応じて）
