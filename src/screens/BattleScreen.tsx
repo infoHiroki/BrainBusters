@@ -244,8 +244,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       runState.relics
     );
 
+    // ステータス効果のボーナスを取得
+    const strengthBonus = battleState.playerStatuses.find(s => s.type === 'strength')?.stacks || 0;
+    const dexterityBonus = battleState.playerStatuses.find(s => s.type === 'dexterity')?.stacks || 0;
+
     // フローティングダメージを表示（敵へのダメージ）
     if (result.damageDealt.length > 0) {
+      const totalDamage = result.damageDealt.reduce((a, b) => a + b, 0);
       result.damageDealt.forEach((damage, i) => {
         if (damage > 0) {
           // 敵の位置に応じてX座標を調整
@@ -254,13 +259,25 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
         }
       });
+
+      // 効果を含めたメッセージ
+      if (strengthBonus > 0) {
+        showMessage(`${card.name}: ${totalDamage}ダメージ (💪+${strengthBonus})`);
+      } else {
+        showMessage(`${card.name}: ${totalDamage}ダメージ！`);
+      }
     }
 
     // ブロック獲得を表示（プレイヤー）
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
-      showMessage(`${blockGained}ブロック獲得！`);
+      // 効果を含めたメッセージ
+      if (dexterityBonus > 0) {
+        showMessage(`${blockGained}ブロック獲得 (🏃+${dexterityBonus})`);
+      } else {
+        showMessage(`${blockGained}ブロック獲得！`);
+      }
     }
 
     // 敵にダメージを与えた場合のアニメーション（常に揺れる）

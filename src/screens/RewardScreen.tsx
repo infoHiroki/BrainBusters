@@ -149,15 +149,11 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
           )}
         </View>
 
-        {/* レリック報酬（ボス戦のみ） */}
+        {/* レリック報酬（ボス戦のみ） - 獲得済み表示 */}
         {isBossReward && relicReward && (
           <View style={styles.rewardSection}>
-            <Text style={styles.sectionTitle}>ボスレリック</Text>
-            <TouchableOpacity
-              style={[styles.relicReward, relicTaken && styles.rewardTaken]}
-              onPress={handleSelectRelic}
-              disabled={relicTaken}
-            >
+            <Text style={styles.sectionTitle}>🎉 ボスレリック獲得！</Text>
+            <View style={[styles.relicReward, relicTaken && styles.relicAcquired]}>
               <View style={styles.relicIcon}>
                 <Text style={styles.relicEmoji}>🏆</Text>
               </View>
@@ -168,8 +164,16 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
                   {relicReward.rarity.toUpperCase()}
                 </Text>
               </View>
-              {relicTaken && <Text style={styles.takenText}>獲得済み</Text>}
-            </TouchableOpacity>
+              {relicTaken ? (
+                <View style={styles.acquiredBadge}>
+                  <Text style={styles.acquiredText}>✨ 獲得！</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.acquireButton} onPress={handleSelectRelic}>
+                  <Text style={styles.acquireButtonText}>タップで獲得</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -268,6 +272,36 @@ const styles = StyleSheet.create({
   rewardTaken: {
     opacity: 0.5,
     borderColor: '#666',
+  },
+  relicAcquired: {
+    borderColor: '#2ecc71',
+    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+  },
+  acquiredBadge: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#2ecc71',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  acquiredText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  acquireButton: {
+    backgroundColor: '#6C5CE7',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  acquireButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   takenText: {
     color: '#2ecc71',
