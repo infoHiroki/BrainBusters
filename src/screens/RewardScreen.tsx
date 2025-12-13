@@ -149,10 +149,12 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
           )}
         </View>
 
-        {/* レリック報酬（ボス戦のみ） - 獲得済み表示 */}
+        {/* レリック報酬（ボス戦のみ） */}
         {isBossReward && relicReward && (
           <View style={styles.rewardSection}>
-            <Text style={styles.sectionTitle}>🎉 ボスレリック獲得！</Text>
+            <Text style={styles.sectionTitle}>
+              {relicTaken ? '✨ ボスレリック獲得済み！' : '🎁 ボスレリック'}
+            </Text>
             <View style={[styles.relicReward, relicTaken && styles.relicAcquired]}>
               <View style={styles.relicIcon}>
                 <Text style={styles.relicEmoji}>🏆</Text>
@@ -164,11 +166,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
                   {relicReward.rarity.toUpperCase()}
                 </Text>
               </View>
-              {relicTaken ? (
-                <View style={styles.acquiredBadge}>
-                  <Text style={styles.acquiredText}>✨ 獲得！</Text>
-                </View>
-              ) : (
+              {!relicTaken && (
                 <TouchableOpacity style={styles.acquireButton} onPress={handleSelectRelic}>
                   <Text style={styles.acquireButtonText}>タップで獲得</Text>
                 </TouchableOpacity>
@@ -312,16 +310,17 @@ const styles = StyleSheet.create({
   },
   cardScrollView: {
     overflow: 'visible',
+    marginHorizontal: -8,
   },
   cardRow: {
     flexDirection: 'row',
     paddingVertical: 16,
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 24,
+    gap: 16,
   },
   cardReward: {
     alignItems: 'center',
-    padding: 4,
+    padding: 8,
   },
   cardSelected: {
     // BattleCardのselected propで枠が光るため、ここでは追加スタイルなし
