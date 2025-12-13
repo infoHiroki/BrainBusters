@@ -408,7 +408,7 @@ export const processEnemyTurn = (
         } else {
           return {
             ...enemy,
-            statuses: [...enemy.statuses, { type: 'strength', stacks: buffValue }],
+            statuses: [...enemy.statuses, { type: 'strength' as const, stacks: buffValue }],
           };
         }
 
@@ -665,6 +665,30 @@ export const useStockCard = async (
 
   const newStockCards = [...latestState.stockCards];
   newStockCards.splice(index, 1);
+
+  const newState: RunState = {
+    ...latestState,
+    stockCards: newStockCards,
+  };
+  await saveRunState(newState);
+  return newState;
+};
+
+// ストックカードを交換（満杯時に既存カードと入れ替え）
+export const replaceStockCard = async (
+  _runState: RunState,
+  index: number,
+  newCard: Card
+): Promise<RunState> => {
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
+  if (index < 0 || index >= latestState.stockCards.length) {
+    return latestState;
+  }
+
+  const newStockCards = [...latestState.stockCards];
+  newStockCards[index] = newCard;
 
   const newState: RunState = {
     ...latestState,
