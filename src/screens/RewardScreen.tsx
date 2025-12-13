@@ -20,7 +20,8 @@ interface RewardScreenProps {
   runState: RunState;
   isBossReward?: boolean;
   goldReward: number;
-  onSelectCard: (card: Card) => void;
+  onSelectCard: (card: Card) => Promise<void>;
+  onSetStockCard: (card: Card) => Promise<void>;
   onSelectRelic?: (relic: Relic) => void;
   onSkip: () => void;
   onTakeGold: () => void;
@@ -31,6 +32,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   isBossReward = false,
   goldReward,
   onSelectCard,
+  onSetStockCard,
   onSelectRelic,
   onSkip,
   onTakeGold,
@@ -38,6 +40,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   const [goldTaken, setGoldTaken] = useState(true); // 自動取得
   const [selectedCard, setSelectedCard] = useState<Card | null>(null); // 選択中のカード（再選択可能）
   const [relicTaken, setRelicTaken] = useState(false);
+  const [cardAction, setCardAction] = useState<'deck' | 'stock'>('stock'); // デフォルトはストック
 
   // ゴールド自動取得
   useEffect(() => {
@@ -86,14 +89,19 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   };
 
   // 「次の階へ進む」ボタン押下時にカードを確定
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (selectedCard) {
-      onSelectCard(selectedCard);
+      if (cardAction === 'stock') {
+        await onSetStockCard(selectedCard); // ストックに設定
+      } else {
+        await onSelectCard(selectedCard); // デッキに追加
+      }
     }
     onSkip();
   };
 
   const canProceed = goldTaken;
+  const hasStockCard = runState.stockCard !== null;
 
   return (
     <View style={styles.container}>
@@ -111,6 +119,16 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {/* ボス撃破時HP回復 */}
+        {isBossReward && (
+          <View style={styles.rewardSection}>
+            <View style={styles.healRewardAuto}>
+              <Text style={styles.healText}>💚 HP回復！（最大HPの30%）</Text>
+              <Text style={styles.healTotalText}>現在HP: {runState.hp} / {runState.maxHp}</Text>
+            </View>
+          </View>
+        )}
+
         {/* ゴールド報酬（自動取得） */}
         <View style={styles.rewardSection}>
           <View style={styles.goldRewardAuto}>
@@ -145,7 +163,33 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             })}
           </ScrollView>
           {selectedCard && (
-            <Text style={styles.selectedMessage}>「{selectedCard.name}」を選択中（進むボタンで確定）</Text>
+            <View style={styles.cardActionContainer}>
+              <Text style={styles.selectedMessage}>「{selectedCard.name}」を選択中</Text>
+              <View style={styles.actionToggle}>
+                <TouchableOpacity
+                  style={[styles.actionButton, cardAction === 'stock' && styles.actionButtonActive]}
+                  onPress={() => setCardAction('stock')}
+                >
+                  <Text style={[styles.actionButtonText, cardAction === 'stock' && styles.actionButtonTextActive]}>
+                    📦 ストックに設定
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, cardAction === 'deck' && styles.actionButtonActive]}
+                  onPress={() => setCardAction('deck')}
+                >
+                  <Text style={[styles.actionButtonText, cardAction === 'deck' && styles.actionButtonTextActive]}>
+                    🃏 デッキに追加
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {cardAction === 'stock' && hasStockCard && (
+                <Text style={styles.stockWarning}>⚠️ 現在のストック「{runState.stockCard?.name}」は上書きされます</Text>
+              )}
+              {cardAction === 'stock' && (
+                <Text style={styles.stockInfo}>ストックカードは戦闘中いつでも使用可能！</Text>
+              )}
+            </View>
           )}
         </View>
 
@@ -188,7 +232,9 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {runState.floor >= 15 ? 'クリア！' : selectedCard ? `${selectedCard.name}を獲得して進む` : '次の階へ進む'}
+              {runState.floor >= 25 ? 'クリア！' : selectedCard
+                ? (cardAction === 'stock' ? `${selectedCard.name}をストック` : `${selectedCard.name}をデッキに追加`)
+                : '次の階へ進む'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -237,11 +283,13 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 20,
     alignItems: 'center',
+    overflow: 'visible',
   },
   rewardSection: {
     marginBottom: 24,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 560,  // カードサイズ拡大に対応
+    overflow: 'visible',
   },
   sectionTitle: {
     color: '#fff',
@@ -249,21 +297,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  goldRewardAuto: {
-    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+  healRewardAuto: {
+    backgroundColor: 'rgba(46, 204, 113, 0.3)',
     padding: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#2ecc71',
+    borderColor: '#27ae60',
+    alignItems: 'center',
+  },
+  healText: {
+    color: '#27ae60',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  healTotalText: {
+    color: '#2ecc71',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  goldRewardAuto: {
+    backgroundColor: 'rgba(241, 196, 15, 0.2)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#f1c40f',
     alignItems: 'center',
   },
   goldText: {
-    color: '#2ecc71',
+    color: '#f1c40f',
     fontSize: 18,
     fontWeight: 'bold',
   },
   goldTotalText: {
-    color: '#f1c40f',
+    color: '#f39c12',
     fontSize: 14,
     marginTop: 4,
   },
@@ -314,13 +380,16 @@ const styles = StyleSheet.create({
   },
   cardRow: {
     flexDirection: 'row',
-    paddingVertical: 16,
+    paddingTop: 30,  // 選択時の拡大用スペース
+    paddingBottom: 20,
     paddingHorizontal: 24,
     gap: 16,
+    overflow: 'visible',
   },
   cardReward: {
     alignItems: 'center',
     padding: 8,
+    overflow: 'visible',
   },
   cardSelected: {
     // BattleCardのselected propで枠が光るため、ここでは追加スタイルなし
@@ -339,8 +408,48 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 13,
     textAlign: 'center',
-    marginTop: 8,
     fontWeight: 'bold',
+  },
+  cardActionContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  actionToggle: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 2,
+    borderColor: '#666',
+  },
+  actionButtonActive: {
+    backgroundColor: 'rgba(108, 92, 231, 0.3)',
+    borderColor: '#6C5CE7',
+  },
+  actionButtonText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  actionButtonTextActive: {
+    color: '#fff',
+  },
+  stockWarning: {
+    color: '#F59E0B',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  stockInfo: {
+    color: '#3B82F6',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
   },
   relicReward: {
     backgroundColor: 'rgba(155, 89, 182, 0.3)',
