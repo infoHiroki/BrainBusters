@@ -563,7 +563,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         )}
         <ScrollView
           horizontal
-          style={styles.handScroll}
+          style={{ height: 170 }}
           contentContainerStyle={styles.handContainer}
           showsHorizontalScrollIndicator={false}
         >
@@ -818,21 +818,17 @@ const styles = StyleSheet.create({
   },
   // 手札エリア
   handArea: {
-    height: 190,
+    height: 180,
     width: '100%',
     maxWidth: 500,
-  },
-  handScroll: {
-    flex: 1,
+    justifyContent: 'flex-end',
   },
   handContainer: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    paddingBottom: 16,
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '100%',
-    minHeight: '100%',
+    height: 170,
   },
   cardWrapper: {
     marginHorizontal: 4,
