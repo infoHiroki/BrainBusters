@@ -1,5 +1,5 @@
 // バトル用カードコンポーネント
-// 手札に表示されるカード
+// TCG風デザイン - 将来の画像追加を想定
 
 import React from 'react';
 import {
@@ -35,65 +35,121 @@ export const BattleCard: React.FC<BattleCardProps> = ({
   const rarityColor = getRarityColor(card.rarity);
   const description = getCardDescription(card, playerStatuses);
 
-  // カードタイプに応じた背景色
-  const getCardGradient = (): [string, string] => {
-    if (disabled) return ['#333', '#222'];
+  // カードタイプに応じたイラストエリアの背景
+  const getArtGradient = (): [string, string, string] => {
     switch (card.type) {
       case 'attack':
-        return ['#4a2a2a', '#3a1a1a']; // 赤系
+        return ['#8B0000', '#DC143C', '#FF4500']; // 赤〜オレンジ
       case 'defense':
-        return ['#2a3a4a', '#1a2a3a']; // 青系
+        return ['#00008B', '#4169E1', '#00CED1']; // 青系
       case 'skill':
-        return ['#2a4a2a', '#1a3a1a']; // 緑系
+        return ['#006400', '#228B22', '#32CD32']; // 緑系
       default:
-        return ['#2a2a4e', '#1a1a3e'];
+        return ['#4B0082', '#8B008B', '#DA70D6']; // 紫系
     }
   };
 
+  // レアリティに応じた枠の輝き
+  const getFrameStyle = () => {
+    if (selected) {
+      return {
+        borderColor: '#FFD700',
+        shadowColor: '#FFD700',
+        shadowOpacity: 1,
+        shadowRadius: 15,
+      };
+    }
+    switch (card.rarity) {
+      case 5: // レジェンダリー
+        return {
+          borderColor: '#FFD700',
+          shadowColor: '#FFD700',
+          shadowOpacity: 0.8,
+          shadowRadius: 10,
+        };
+      case 4: // エピック
+        return {
+          borderColor: '#9932CC',
+          shadowColor: '#9932CC',
+          shadowOpacity: 0.6,
+          shadowRadius: 8,
+        };
+      case 3: // レア
+        return {
+          borderColor: '#3498db',
+          shadowColor: '#3498db',
+          shadowOpacity: 0.4,
+          shadowRadius: 6,
+        };
+      default:
+        return {
+          borderColor: '#555',
+          shadowOpacity: 0,
+          shadowRadius: 0,
+        };
+    }
+  };
+
+  const frameStyle = getFrameStyle();
+
   const cardContent = (
     <View style={[
-      styles.card,
+      styles.cardFrame,
       disabled && styles.cardDisabled,
       selected && styles.cardSelected,
-      { borderColor: selected ? '#FFD700' : typeColor },
+      {
+        borderColor: frameStyle.borderColor,
+        shadowColor: frameStyle.shadowColor,
+        shadowOpacity: frameStyle.shadowOpacity,
+        shadowRadius: frameStyle.shadowRadius,
+      },
     ]}>
-      {/* コスト */}
-      <View style={[styles.costContainer, { backgroundColor: typeColor }]}>
-        <Text style={styles.costText}>{card.cost}</Text>
-      </View>
+      {/* カード内側 */}
+      <View style={styles.cardInner}>
+        {/* コストバッジ（左上に重ねて表示） */}
+        <View style={[styles.costBadge, { backgroundColor: typeColor }]}>
+          <Text style={styles.costText}>{card.cost}</Text>
+        </View>
 
-      {/* カード本体 */}
-      <LinearGradient
-        colors={getCardGradient()}
-        style={styles.cardGradient}
-      >
-        {/* レアリティバー */}
-        <View style={[styles.rarityBar, { backgroundColor: rarityColor }]} />
+        {/* イラストエリア（将来画像を入れる場所） */}
+        <LinearGradient
+          colors={getArtGradient()}
+          style={styles.artArea}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* プレースホルダー: カテゴリアイコン的な表示 */}
+          <Text style={styles.artPlaceholder}>
+            {card.type === 'attack' ? '⚔️' : card.type === 'defense' ? '🛡️' : '✨'}
+          </Text>
+        </LinearGradient>
 
-        {/* カード名 */}
-        <Text style={styles.cardName} numberOfLines={1}>
-          {card.name}
-        </Text>
-
-        {/* タイプ */}
-        <View style={[styles.typeContainer, { backgroundColor: typeColor }]}>
-          <Text style={styles.typeText}>
-            {getCardTypeName(card.type)}
+        {/* カード名バナー */}
+        <View style={[styles.nameBanner, { backgroundColor: typeColor }]}>
+          <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+            {card.name}
           </Text>
         </View>
 
-        {/* 効果説明 */}
-        <Text style={styles.descriptionText} numberOfLines={3}>
-          {description}
-        </Text>
+        {/* タイプ表示 */}
+        <View style={styles.typeRow}>
+          <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <Text style={styles.typeText}>{getCardTypeName(card.type)}</Text>
+          </View>
+          <View style={[styles.rarityStars]}>
+            <Text style={[styles.rarityText, { color: rarityColor }]}>
+              {'★'.repeat(card.rarity)}
+            </Text>
+          </View>
+        </View>
 
-        {/* フレーバーテキスト */}
-        {card.flavorText && (
-          <Text style={styles.flavorText} numberOfLines={1}>
-            {card.flavorText}
+        {/* 効果テキストエリア */}
+        <View style={styles.effectArea}>
+          <Text style={styles.effectText} numberOfLines={3}>
+            {description}
           </Text>
-        )}
-      </LinearGradient>
+        </View>
+      </View>
     </View>
   );
 
@@ -123,87 +179,121 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  card: {
-    width: 120,
-    height: 160,
+  cardFrame: {
+    width: 130,
+    height: 185,
     borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 2,
+    borderWidth: 3,
+    backgroundColor: '#1a1a2e',
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
   },
   cardDisabled: {
     opacity: 0.4,
   },
   cardSelected: {
-    borderWidth: 3,
     transform: [{ scale: 1.08 }, { translateY: -10 }],
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 15,
+    elevation: 20,
   },
-  costContainer: {
+  cardInner: {
+    flex: 1,
+    borderRadius: 7,
+    overflow: 'hidden',
+  },
+  // コストバッジ
+  costBadge: {
     position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: 4,
+    left: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    zIndex: 20,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 5,
   },
   costText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
-  cardGradient: {
-    flex: 1,
-    padding: 8,
-    paddingTop: 12,
+  // イラストエリア
+  artArea: {
+    height: 75,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  rarityBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
+  artPlaceholder: {
+    fontSize: 36,
+    opacity: 0.9,
+  },
+  // カード名バナー
+  nameBanner: {
+    minHeight: 28,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
   },
   cardName: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 6,
-    marginTop: 18,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
-  typeContainer: {
-    alignSelf: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 6,
+  // タイプ行
+  typeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    backgroundColor: '#0a0a1a',
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
   },
   typeText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: 'bold',
   },
-  descriptionText: {
-    color: '#fff',
-    fontSize: 12,
-    textAlign: 'center',
-    flex: 1,
-    lineHeight: 16,
+  rarityStars: {
+    flexDirection: 'row',
   },
-  flavorText: {
-    color: '#999',
+  rarityText: {
     fontSize: 9,
-    fontStyle: 'italic',
+    letterSpacing: -1,
+  },
+  // 効果エリア
+  effectArea: {
+    flex: 1,
+    backgroundColor: '#16213e',
+    padding: 6,
+    justifyContent: 'center',
+  },
+  effectText: {
+    color: '#fff',
+    fontSize: 11,
     textAlign: 'center',
-    marginTop: 4,
+    lineHeight: 15,
+    fontWeight: '500',
   },
 });
