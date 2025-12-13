@@ -564,58 +564,59 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
         {/* プレイヤーエリア */}
         <View style={styles.playerSection}>
-          <View style={styles.playerAvatar}>
-            <Text style={styles.avatarEmoji}>🧙</Text>
-          </View>
-          <View style={styles.playerStats}>
-            <View style={styles.hpRow}>
-              <Text style={styles.statEmoji}>❤️</Text>
-              <View style={styles.hpBar}>
-                <LinearGradient
-                  colors={hpPercentage > 30 ? ['#c0392b', '#e74c3c'] : ['#8B0000', '#c0392b']}
-                  style={[styles.hpFill, { width: `${hpPercentage}%` }]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                />
-              </View>
-              <Text style={styles.hpText}>{hp}/{runState.maxHp}</Text>
-            </View>
-            <View style={styles.statsRow}>
-              <View style={[styles.blockDisplay, playerBlock === 0 && styles.blockDim]}>
-                <Text style={styles.statEmoji}>🛡️</Text>
-                <Text style={styles.blockText}>{playerBlock}</Text>
-              </View>
-              <View style={styles.energyDisplay}>
-                <Text style={styles.energyText}>{energy}/{runState.maxEnergy}</Text>
-                <Text style={styles.statEmoji}>⚡</Text>
+          {/* HPバーをフル幅で表示 */}
+          <View style={styles.hpBarFull}>
+            <View style={styles.hpBarBackground}>
+              <LinearGradient
+                colors={hpPercentage > 30 ? ['#c0392b', '#e74c3c'] : ['#8B0000', '#c0392b']}
+                style={[styles.hpFill, { width: `${hpPercentage}%` }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
+              {/* HPテキストをバーの中央に表示 */}
+              <View style={styles.hpTextOverlay}>
+                <Text style={styles.hpTextInBar}>❤️ {hp} / {runState.maxHp}</Text>
               </View>
             </View>
-            {/* プレイヤーのステータス効果表示 */}
-            {battleState.playerStatuses.length > 0 && (
-              <View style={styles.statusEffectsRow}>
-                {battleState.playerStatuses.map((status, idx) => (
-                  <View key={idx} style={styles.statusBadge}>
-                    <Text style={styles.statusIcon}>
-                      {status.type === 'strength' ? '💪' :
-                       status.type === 'dexterity' ? '🏃' :
-                       status.type === 'regeneration' ? '💚' :
-                       status.type === 'vulnerable' ? '💔' :
-                       status.type === 'weak' ? '😵' :
-                       status.type === 'frail' ? '🦴' :
-                       status.type === 'poison' ? '☠️' : '✨'}
-                    </Text>
-                    <Text style={[
-                      styles.statusValue,
-                      { color: ['strength', 'dexterity', 'regeneration'].includes(status.type) ? '#2ECC71' : '#E74C3C' }
-                    ]}>
-                      {status.stacks}
-                      {status.duration ? `(${status.duration})` : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
+          <View style={styles.playerStatsRow}>
+            <View style={styles.playerAvatar}>
+              <Text style={styles.avatarEmoji}>🧙</Text>
+            </View>
+            <View style={[styles.blockDisplay, playerBlock === 0 && styles.blockDim]}>
+              <Text style={styles.statEmoji}>🛡️</Text>
+              <Text style={styles.blockText}>{playerBlock}</Text>
+            </View>
+            <View style={styles.energyDisplay}>
+              <Text style={styles.energyText}>{energy}/{runState.maxEnergy}</Text>
+              <Text style={styles.statEmoji}>⚡</Text>
+            </View>
+          </View>
+          {/* プレイヤーのステータス効果表示 */}
+          {battleState.playerStatuses.length > 0 && (
+            <View style={styles.statusEffectsRow}>
+              {battleState.playerStatuses.map((status, idx) => (
+                <View key={idx} style={styles.statusBadge}>
+                  <Text style={styles.statusIcon}>
+                    {status.type === 'strength' ? '💪' :
+                     status.type === 'dexterity' ? '🏃' :
+                     status.type === 'regeneration' ? '💚' :
+                     status.type === 'vulnerable' ? '💔' :
+                     status.type === 'weak' ? '😵' :
+                     status.type === 'frail' ? '🦴' :
+                     status.type === 'poison' ? '☠️' : '✨'}
+                  </Text>
+                  <Text style={[
+                    styles.statusValue,
+                    { color: ['strength', 'dexterity', 'regeneration'].includes(status.type) ? '#2ECC71' : '#E74C3C' }
+                  ]}>
+                    {status.stacks}
+                    {status.duration ? `(${status.duration})` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </View>
 
@@ -742,63 +743,68 @@ const styles = StyleSheet.create({
   },
   // プレイヤーセクション
   playerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 12,
     padding: 12,
-    gap: 12,
+    gap: 10,
+  },
+  // HPバー（フル幅）
+  hpBarFull: {
+    width: '100%',
+  },
+  hpBarBackground: {
+    width: '100%',
+    height: 32,
+    backgroundColor: '#222',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#c0392b',
+    position: 'relative',
+  },
+  hpFill: {
+    height: '100%',
+  },
+  hpTextOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hpTextInBar: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  // ステータス行（アバター、ブロック、エネルギー）
+  playerStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   playerAvatar: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
     backgroundColor: 'rgba(100, 100, 200, 0.3)',
-    borderRadius: 30,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#6464c8',
   },
   avatarEmoji: {
-    fontSize: 32,
-  },
-  playerStats: {
-    flex: 1,
-    gap: 8,
-  },
-  hpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    fontSize: 24,
   },
   statEmoji: {
-    fontSize: 20,
-  },
-  hpBar: {
-    flex: 1,
-    height: 24,
-    backgroundColor: '#333',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#555',
-  },
-  hpFill: {
-    height: '100%',
-  },
-  hpText: {
-    color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
-    minWidth: 70,
-    textShadowColor: '#000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   blockDisplay: {
     flexDirection: 'row',
@@ -839,8 +845,8 @@ const styles = StyleSheet.create({
   statusEffectsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 6,
+    justifyContent: 'center',
+    gap: 6,
   },
   statusBadge: {
     flexDirection: 'row',
