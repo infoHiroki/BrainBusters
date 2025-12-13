@@ -351,46 +351,117 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('enemy');
     setSelectedCardIndex(null);
 
-    // 敵のターン処理
+    // 敵のターン処理 - 段階的なアニメーション表示
     setTimeout(() => {
+      // 攻撃する敵のintentを取得
+      const attackingEnemies = battleState.enemies.filter(e =>
+        e.hp > 0 && e.intent.type === 'attack'
+      );
+      const totalIntent = attackingEnemies.reduce((sum, e) => sum + (e.intent.value || 0), 0);
+
       const enemyResult = processEnemyTurn(battleState, hp, playerBlock);
 
-      // ダメージアニメーション（プレイヤーへのダメージ）
-      const totalDamage = enemyResult.damages.reduce((a, b) => a + b, 0);
-      if (totalDamage > 0) {
-        addFloatingNumber(totalDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-        showMessage(`${totalDamage}ダメージ！`);
-      }
+      // ダメージ計算の詳細
+      const blockedAmount = Math.min(playerBlock, totalIntent);
+      const actualDamage = hp - enemyResult.hp;
 
-      // ブロックで軽減した場合
-      if (playerBlock > 0 && enemyResult.block < playerBlock) {
-        const blockedDamage = playerBlock - enemyResult.block;
-        if (blockedDamage > 0) {
-          showMessage(`${blockedDamage}ダメージをブロック！`);
-        }
-      }
+      if (totalIntent > 0) {
+        // Step 1: 攻撃表示
+        showMessage(`⚔️ 敵の攻撃！ ${totalIntent}`);
 
-      setHp(enemyResult.hp);
-      setPlayerBlock(enemyResult.block);
-      setBattleState(enemyResult.battleState);
-
-      // 敗北判定
-      if (isBattleLost(enemyResult.hp)) {
         setTimeout(() => {
-          handleBattleEnd(false);
-        }, 500);
-        return;
-      }
+          if (playerBlock > 0 && blockedAmount > 0) {
+            // Step 2: ブロック表示
+            showMessage(`🛡️ ブロック ${blockedAmount}`);
+            addFloatingNumber(blockedAmount, 'block', SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT * 0.65);
 
-      // 新しいターンを開始
+            setTimeout(() => {
+              if (actualDamage > 0) {
+                // Step 3: 最終ダメージ
+                showMessage(`💥 ${actualDamage} ダメージ！`);
+                addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
+              } else {
+                // 完全ブロック
+                showMessage(`✨ 完全ブロック！`);
+              }
+              // 状態更新
+              setHp(enemyResult.hp);
+              setPlayerBlock(enemyResult.block);
+              setBattleState(enemyResult.battleState);
+              checkBattleEndAndContinue(enemyResult);
+            }, 600);
+          } else {
+            // ブロックなし - 直接ダメージ
+            showMessage(`💥 ${actualDamage} ダメージ！`);
+            addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
+            setHp(enemyResult.hp);
+            setPlayerBlock(enemyResult.block);
+            setBattleState(enemyResult.battleState);
+            checkBattleEndAndContinue(enemyResult);
+          }
+        }, 600);
+      } else {
+        // 敵が防御やバフの場合
+        const defendingEnemy = battleState.enemies.find(e =>
+          e.hp > 0 && e.intent.type === 'defend'
+        );
+        if (defendingEnemy) {
+          showMessage(`🛡️ 敵がブロック +${defendingEnemy.intent.value}`);
+        }
+        setHp(enemyResult.hp);
+        setPlayerBlock(enemyResult.block);
+        setBattleState(enemyResult.battleState);
+        checkBattleEndAndContinue(enemyResult);
+      }
+    }, 500);
+  };
+
+  // 敵ターン終了後の処理
+  const checkBattleEndAndContinue = (enemyResult: { hp: number; battleState: BattleState }) => {
+    // 敗北判定
+    if (isBattleLost(enemyResult.hp)) {
       setTimeout(() => {
-        startNewTurn();
+        handleBattleEnd(false);
       }, 500);
-    }, 1000);
+      return;
+    }
+
+    // 新しいターンを開始
+    setTimeout(() => {
+      startNewTurn();
+    }, 500);
   };
 
   // 新しいターンを開始
   const startNewTurn = () => {
+    // 再生バフの処理（ターン開始時にHP回復）
+    if (battleState) {
+      const regenStatus = battleState.playerStatuses.find(s => s.type === 'regeneration');
+      if (regenStatus && regenStatus.stacks > 0) {
+        const healAmount = regenStatus.stacks;
+        setHp(prev => Math.min(runState.maxHp, prev + healAmount));
+        addFloatingNumber(healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
+        showMessage(`再生で${healAmount}HP回復！`);
+
+        // 再生のスタック/ターン減少
+        setBattleState(prev => {
+          if (!prev) return prev;
+          const newStatuses = prev.playerStatuses.map(s => {
+            if (s.type === 'regeneration') {
+              // ターン数がある場合は減少、なければスタック減少
+              if (s.duration && s.duration > 1) {
+                return { ...s, duration: s.duration - 1 };
+              } else {
+                return { ...s, stacks: s.stacks - 1 };
+              }
+            }
+            return s;
+          }).filter(s => s.stacks > 0);
+          return { ...prev, playerStatuses: newStatuses };
+        });
+      }
+    }
+
     // 手札を捨てる
     setDiscardPile(prev => [...prev, ...hand]);
     setHand([]);
@@ -400,6 +471,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // ブロックリセット
     setPlayerBlock(0);
+
+    // ターンカウント増加
+    setBattleState(prev => prev ? { ...prev, turn: prev.turn + 1 } : prev);
 
     // カードを引く
     setTurnPhase('draw');
@@ -439,21 +513,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         style={StyleSheet.absoluteFill}
       />
 
-      {/* ヘッダー（階層情報のみ） */}
+      {/* ヘッダー（コンパクト） */}
       <View style={styles.header}>
-        <View style={styles.floorInfo}>
+        <View style={styles.floorBadge}>
           <Text style={styles.floorText}>{runState.floor}F</Text>
         </View>
-        <View style={styles.turnIndicator}>
-          <Text style={styles.turnText}>
-            {turnPhase === 'enemy' ? '敵のターン' : `ターン ${battleState.turn}`}
-          </Text>
-        </View>
+        <Text style={styles.turnText}>
+          {turnPhase === 'enemy' ? '敵ターン' : `ターン${battleState.turn}`}
+        </Text>
       </View>
 
-      {/* 敵エリア（中央） */}
-      <View style={styles.enemyArea}>
-        <View style={styles.enemyRow}>
+      {/* バトルフィールド */}
+      <View style={styles.battlefield}>
+        {/* 敵エリア */}
+        <View style={styles.enemySection}>
           {battleState.enemies.map((enemy, index) => (
             <EnemyDisplay
               key={index}
@@ -464,6 +537,67 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
               shakeAnim={shakeAnims[index]}
             />
           ))}
+        </View>
+
+        {/* VS表示 */}
+        <View style={styles.vsSection}>
+          <Text style={styles.vsText}>⚔️</Text>
+        </View>
+
+        {/* プレイヤーエリア */}
+        <View style={styles.playerSection}>
+          <View style={styles.playerAvatar}>
+            <Text style={styles.avatarEmoji}>🧙</Text>
+          </View>
+          <View style={styles.playerStats}>
+            <View style={styles.hpRow}>
+              <Text style={styles.statEmoji}>❤️</Text>
+              <View style={styles.hpBar}>
+                <LinearGradient
+                  colors={hpPercentage > 30 ? ['#c0392b', '#e74c3c'] : ['#8B0000', '#c0392b']}
+                  style={[styles.hpFill, { width: `${hpPercentage}%` }]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+              </View>
+              <Text style={styles.hpText}>{hp}/{runState.maxHp}</Text>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={[styles.blockDisplay, playerBlock === 0 && styles.blockDim]}>
+                <Text style={styles.statEmoji}>🛡️</Text>
+                <Text style={styles.blockText}>{playerBlock}</Text>
+              </View>
+              <View style={styles.energyDisplay}>
+                <Text style={styles.energyText}>{energy}/{runState.maxEnergy}</Text>
+                <Text style={styles.statEmoji}>⚡</Text>
+              </View>
+            </View>
+            {/* プレイヤーのステータス効果表示 */}
+            {battleState.playerStatuses.length > 0 && (
+              <View style={styles.statusEffectsRow}>
+                {battleState.playerStatuses.map((status, idx) => (
+                  <View key={idx} style={styles.statusBadge}>
+                    <Text style={styles.statusIcon}>
+                      {status.type === 'strength' ? '💪' :
+                       status.type === 'dexterity' ? '🏃' :
+                       status.type === 'regeneration' ? '💚' :
+                       status.type === 'vulnerable' ? '💔' :
+                       status.type === 'weak' ? '😵' :
+                       status.type === 'frail' ? '🦴' :
+                       status.type === 'poison' ? '☠️' : '✨'}
+                    </Text>
+                    <Text style={[
+                      styles.statusValue,
+                      { color: ['strength', 'dexterity', 'regeneration'].includes(status.type) ? '#2ECC71' : '#E74C3C' }
+                    ]}>
+                      {status.stacks}
+                      {status.duration ? `(${status.duration})` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -481,76 +615,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         />
       ))}
 
-      {/* プレイヤー情報エリア（Slay the Spire風） */}
-      <View style={styles.playerArea}>
-        {/* 山札（左側） */}
-        <TouchableOpacity style={styles.drawPileContainer}>
-          <LinearGradient colors={['#2a4a6a', '#1a3a5a']} style={styles.pileGradient}>
-            <Text style={styles.pileCount}>{drawPile.length}</Text>
-            <Text style={styles.pileLabel}>山札</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* プレイヤーステータス（中央下） */}
-        <View style={styles.playerStatusCenter}>
-          {/* HP表示 */}
-          <View style={styles.hpSection}>
-            <Text style={styles.hpIcon}>❤️</Text>
-            <View style={styles.hpBarBackground}>
-              <LinearGradient
-                colors={hpPercentage > 30 ? ['#c0392b', '#e74c3c'] : ['#8B0000', '#c0392b']}
-                style={[styles.hpBarFill, { width: `${hpPercentage}%` }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              />
-            </View>
-            <Text style={styles.hpValue}>{hp}/{runState.maxHp}</Text>
-          </View>
-
-          {/* ブロック表示（常に表示、0の時はグレー） */}
-          <View style={[styles.blockSection, playerBlock === 0 && styles.blockEmpty]}>
-            <Text style={styles.blockIcon}>🛡️</Text>
-            <Text style={[styles.blockValue, playerBlock === 0 && styles.blockValueEmpty]}>
-              {playerBlock}
-            </Text>
-          </View>
-
-          {/* エネルギー表示 */}
-          <View style={styles.energySection}>
-            <LinearGradient colors={['#d4a574', '#b8956a']} style={styles.energyOrb}>
-              <Text style={styles.energyValue}>{energy}</Text>
-            </LinearGradient>
-            <Text style={styles.energyMax}>/{runState.maxEnergy}</Text>
-          </View>
-        </View>
-
-        {/* 捨て札（右側） */}
-        <TouchableOpacity style={styles.discardPileContainer}>
-          <LinearGradient colors={['#4a2a2a', '#3a1a1a']} style={styles.pileGradient}>
-            <Text style={styles.pileCount}>{discardPile.length}</Text>
-            <Text style={styles.pileLabel}>捨札</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {/* ターン終了ボタン */}
-      <View style={styles.actionRow}>
+      {/* アクションバー */}
+      <View style={styles.actionBar}>
         <TouchableOpacity
           style={[
-            styles.endTurnButtonInline,
+            styles.endTurnButton,
             (turnPhase !== 'player' || isProcessing) && styles.buttonDisabled,
           ]}
           onPress={handleEndTurn}
           disabled={turnPhase !== 'player' || isProcessing}
         >
-          <LinearGradient
-            colors={turnPhase !== 'player' || isProcessing ? ['#444', '#333'] : ['#8B4513', '#654321']}
-            style={styles.endTurnGradient}
-          >
-            <Text style={styles.endTurnText}>
-              {turnPhase === 'enemy' ? '敵ターン...' : 'ターン終了'}
-            </Text>
-          </LinearGradient>
+          <Text style={styles.endTurnText}>
+            {turnPhase === 'enemy' ? '敵ターン...' : 'ターン終了'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -563,9 +640,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         )}
         <ScrollView
           horizontal
-          style={{ height: 170 }}
+          style={{ height: 205 }}
           contentContainerStyle={styles.handContainer}
-          showsHorizontalScrollIndicator={false}
+          showsHorizontalScrollIndicator={true}
         >
           {hand.map((cardInstance, index) => (
             <View key={cardInstance.instanceId} style={styles.cardWrapper}>
@@ -596,74 +673,183 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 100,
   },
-  // ヘッダー
+  // ヘッダー（コンパクト）
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 8,
     width: '100%',
     maxWidth: 500,
   },
-  floorInfo: {
-    backgroundColor: 'rgba(139, 69, 19, 0.8)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#8B4513',
+  floorBadge: {
+    backgroundColor: '#8B4513',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
   floorText: {
     color: '#FFD700',
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  turnIndicator: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
   turnText: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#aaa',
+    fontSize: 14,
   },
-  // 敵エリア
-  enemyArea: {
+  // バトルフィールド
+  battlefield: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     width: '100%',
     maxWidth: 500,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
-  enemyRow: {
+  // 敵セクション
+  enemySection: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  // メッセージ（敵エリア内に表示）
+  // VS表示
+  vsSection: {
+    paddingVertical: 8,
+  },
+  vsText: {
+    fontSize: 24,
+  },
+  // プレイヤーセクション
+  playerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+  },
+  playerAvatar: {
+    width: 60,
+    height: 60,
+    backgroundColor: 'rgba(100, 100, 200, 0.3)',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#6464c8',
+  },
+  avatarEmoji: {
+    fontSize: 32,
+  },
+  playerStats: {
+    flex: 1,
+    gap: 8,
+  },
+  hpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statEmoji: {
+    fontSize: 16,
+  },
+  hpBar: {
+    flex: 1,
+    height: 16,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  hpFill: {
+    height: '100%',
+  },
+  hpText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    minWidth: 60,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  blockDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(52, 152, 219, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  blockDim: {
+    opacity: 0.4,
+  },
+  blockText: {
+    color: '#3498db',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  energyDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 69, 19, 0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  energyText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // ステータス効果表示
+  statusEffectsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+  statusIcon: {
+    fontSize: 12,
+  },
+  statusValue: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  // メッセージ
   messageContainer: {
     position: 'absolute',
-    top: '45%',
+    top: '40%',
     alignSelf: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
   messageText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     textShadowColor: '#000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#444',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   // フローティングダメージ
   floatingNumber: {
@@ -671,167 +857,52 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   floatingNumberText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
   },
-  // プレイヤーエリア（Slay the Spire風）
-  playerArea: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    width: '100%',
-    maxWidth: 500,
-  },
-  drawPileContainer: {
-    width: 60,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  discardPileContainer: {
-    width: 60,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  actionRow: {
+  // アクションバー
+  actionBar: {
     width: '100%',
     maxWidth: 500,
     alignItems: 'center',
     paddingVertical: 8,
   },
-  endTurnButtonInline: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#654321',
-  },
-  pileGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#555',
-    borderRadius: 8,
-  },
-  pileCount: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  pileLabel: {
-    color: '#aaa',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  playerStatusCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  // HP表示
-  hpSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  hpIcon: {
-    fontSize: 24,
-  },
-  hpBarBackground: {
-    width: 150,
-    height: 24,
-    backgroundColor: '#333',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#555',
-  },
-  hpBarFill: {
-    height: '100%',
-  },
-  hpValue: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    minWidth: 70,
-  },
-  // ブロック表示
-  blockSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(52, 152, 219, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  endTurnButton: {
+    backgroundColor: '#2d5a27',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#3498db',
-    gap: 6,
+    borderColor: '#4a8',
   },
-  blockEmpty: {
-    backgroundColor: 'rgba(100, 100, 100, 0.2)',
-    borderColor: '#555',
-  },
-  blockIcon: {
-    fontSize: 20,
-  },
-  blockValue: {
-    color: '#3498db',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  blockValueEmpty: {
-    color: '#666',
-  },
-  // エネルギー表示
-  energySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  energyOrb: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#8B4513',
-  },
-  energyValue: {
+  endTurnText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 14,
     fontWeight: 'bold',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
-  energyMax: {
-    color: '#aaa',
-    fontSize: 16,
-    marginLeft: 4,
+  buttonDisabled: {
+    opacity: 0.5,
   },
   // 手札エリア
   handArea: {
-    height: 180,
+    height: 210,
     width: '100%',
-    maxWidth: 500,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   handContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    height: 200,
+    minWidth: '100%',
     justifyContent: 'center',
-    height: 170,
   },
   cardWrapper: {
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   cancelButton: {
     position: 'absolute',
@@ -846,18 +917,6 @@ const styles = StyleSheet.create({
   cancelText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: 'bold',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  endTurnGradient: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  endTurnText: {
-    color: '#fff',
-    fontSize: 14,
     fontWeight: 'bold',
   },
 });

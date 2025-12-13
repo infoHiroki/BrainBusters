@@ -46,6 +46,21 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   };
 
+  const getIntentColor = (): string => {
+    switch (enemy.intent.type) {
+      case 'attack':
+        return '#e74c3c';
+      case 'defend':
+        return '#3498db';
+      case 'buff':
+        return '#27ae60';
+      case 'debuff':
+        return '#9b59b6';
+      default:
+        return '#95a5a6';
+    }
+  };
+
   const getHpBarColor = (): [string, string] => {
     if (hpPercentage > 60) return ['#27ae60', '#2ecc71'];
     if (hpPercentage > 30) return ['#f39c12', '#f1c40f'];
@@ -66,11 +81,23 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
       {/* 行動予告 */}
       {!isDead && !isTargeted && (
-        <View style={styles.intentContainer}>
+        <View style={[styles.intentContainer, { borderColor: getIntentColor(), borderWidth: 2 }]}>
           <Text style={styles.intentIcon}>{getIntentIcon()}</Text>
-          <Text style={styles.intentText}>
-            {getIntentDescription(enemy.intent)}
-          </Text>
+          {enemy.intent.type === 'attack' ? (
+            <View style={styles.intentAttack}>
+              <Text style={[styles.intentValue, { color: '#e74c3c' }]}>{enemy.intent.value}</Text>
+              <Text style={styles.intentLabel}>ダメージ</Text>
+            </View>
+          ) : enemy.intent.type === 'defend' ? (
+            <View style={styles.intentAttack}>
+              <Text style={[styles.intentValue, { color: '#3498db' }]}>{enemy.intent.value}</Text>
+              <Text style={styles.intentLabel}>ブロック</Text>
+            </View>
+          ) : (
+            <Text style={styles.intentText}>
+              {getIntentDescription(enemy.intent)}
+            </Text>
+          )}
         </View>
       )}
 
@@ -203,20 +230,33 @@ const styles = StyleSheet.create({
   intentContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     marginBottom: 10,
   },
   intentIcon: {
-    fontSize: 20,
-    marginRight: 6,
+    fontSize: 22,
+    marginRight: 8,
   },
   intentText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  intentAttack: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  intentValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  intentLabel: {
+    color: '#ccc',
+    fontSize: 12,
+    marginLeft: 4,
   },
   enemyBody: {
     width: 140,
