@@ -125,6 +125,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.cardRow}
+            style={styles.cardScrollView}
           >
             {cardRewards.map((card, index) => {
               const isSelected = selectedCard !== null && selectedCard.id === card.id;
@@ -237,6 +238,7 @@ const styles = StyleSheet.create({
   },
   rewardSection: {
     marginBottom: 24,
+    overflow: 'visible',
   },
   sectionTitle: {
     color: '#fff',
@@ -266,10 +268,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
+  cardScrollView: {
+    overflow: 'visible',
+  },
   cardRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 16,
+    justifyContent: 'center',
   },
   cardReward: {
     alignItems: 'center',
