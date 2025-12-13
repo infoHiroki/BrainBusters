@@ -51,6 +51,15 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 
   // レアリティに応じた枠の輝き
   const getFrameStyle = () => {
+    // 強化済みカードは緑の輝き
+    if (card.upgraded && !selected) {
+      return {
+        borderColor: '#2ECC71',
+        shadowColor: '#2ECC71',
+        shadowOpacity: 0.7,
+        shadowRadius: 8,
+      };
+    }
     if (selected) {
       return {
         borderColor: '#FFD700',
@@ -110,6 +119,13 @@ export const BattleCard: React.FC<BattleCardProps> = ({
         <View style={[styles.costBadge, { backgroundColor: typeColor }]}>
           <Text style={styles.costText}>{card.cost}</Text>
         </View>
+
+        {/* 強化済みバッジ（右上） */}
+        {card.upgraded && (
+          <View style={styles.upgradedBadge}>
+            <Text style={styles.upgradedText}>+</Text>
+          </View>
+        )}
 
         {/* イラストエリア（将来画像を入れる場所） */}
         <LinearGradient
@@ -226,6 +242,31 @@ const styles = StyleSheet.create({
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  // 強化済みバッジ
+  upgradedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#2ECC71',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#2ECC71',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  upgradedText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   // イラストエリア
   artArea: {
