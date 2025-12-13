@@ -944,19 +944,18 @@ export const getRandomCardByRarity = (): Card => {
 };
 
 // 初期デッキを生成（10枚）
-// 500種類の概念から幅広く選択
+// 平均コスト約2.5を目指す（7エネルギーで3枚程度使用可能）
 export const generateStarterDeck = (): Card[] => {
   const starterDeck: Card[] = [];
   const usedIds = new Set<number>();
 
-  // コスト2以下、レアリティ4以下のカードから選択（より広いプール）
-  const validCards = cards.filter(c => c.cost <= 2 && c.rarity <= 4);
+  // レアリティ4以下のカードから選択（コスト制限なし）
+  const allValidCards = cards.filter(c => c.rarity <= 4);
 
   // ユニークなカードを選択するヘルパー
   const pickUnique = (pool: Card[]): Card => {
     const available = pool.filter(c => !usedIds.has(c.id));
     if (available.length === 0) {
-      // フォールバック: 重複許可
       return pool[Math.floor(Math.random() * pool.length)];
     }
     const card = available[Math.floor(Math.random() * available.length)];
@@ -964,23 +963,26 @@ export const generateStarterDeck = (): Card[] => {
     return card;
   };
 
-  // 攻撃カード5枚
-  const attackCards = validCards.filter(c => c.type === 'attack');
-  for (let i = 0; i < 5; i++) {
-    const card = pickUnique(attackCards);
-    starterDeck.push(card);
-  }
+  // コスト別にカードを分類
+  const lowCostAttacks = allValidCards.filter(c => c.type === 'attack' && c.cost <= 2);
+  const midCostAttacks = allValidCards.filter(c => c.type === 'attack' && c.cost >= 3 && c.cost <= 4);
+  const highCostAttacks = allValidCards.filter(c => c.type === 'attack' && c.cost >= 5);
 
-  // 防御カード4枚
-  const defenseCards = validCards.filter(c => c.type === 'defense');
-  for (let i = 0; i < 4; i++) {
-    const card = pickUnique(defenseCards);
-    starterDeck.push(card);
-  }
+  const lowCostDefense = allValidCards.filter(c => c.type === 'defense' && c.cost <= 2);
+  const midCostDefense = allValidCards.filter(c => c.type === 'defense' && c.cost >= 3);
 
-  // スキルカード1枚
-  const skillCards = validCards.filter(c => c.type === 'skill');
-  starterDeck.push(pickUnique(skillCards));
+  // 攻撃カード5枚: 低2 + 中2 + 高1
+  for (let i = 0; i < 2; i++) starterDeck.push(pickUnique(lowCostAttacks));
+  for (let i = 0; i < 2; i++) starterDeck.push(pickUnique(midCostAttacks.length > 0 ? midCostAttacks : lowCostAttacks));
+  starterDeck.push(pickUnique(highCostAttacks.length > 0 ? highCostAttacks : midCostAttacks));
+
+  // 防御カード4枚: 低2 + 中2
+  for (let i = 0; i < 2; i++) starterDeck.push(pickUnique(lowCostDefense));
+  for (let i = 0; i < 2; i++) starterDeck.push(pickUnique(midCostDefense.length > 0 ? midCostDefense : lowCostDefense));
+
+  // スキルカード1枚（コスト2-3）
+  const skillCards = allValidCards.filter(c => c.type === 'skill' && c.cost >= 2 && c.cost <= 3);
+  starterDeck.push(pickUnique(skillCards.length > 0 ? skillCards : allValidCards.filter(c => c.type === 'skill')));
 
   return starterDeck;
 };
