@@ -75,52 +75,62 @@ const getCategoryType = (category: string, name: string): CardType => {
 
 // カードの「個性」を決定するためのハッシュ関数
 const getCardVariant = (id: number): number => {
-  // IDを使って一貫したバリアント（0-9）を生成
-  return id % 10;
+  // IDを使って一貫したバリアント（0-19）を生成（5%刻みの精度）
+  return id % 20;
 };
 
-// basePowerからコストを計算（コスト0を減らし、1-2をメインに）
+// basePowerからコストを計算（コスト0-6）
+// 目標: 3エネルギーで手札5枚中2-3枚使える（平均コスト約1.2）
 const calculateCost = (basePower: number, type: CardType, name: string = '', category: string = '', id: number = 0): number => {
-  const variant = getCardVariant(id);
+  const variant = getCardVariant(id); // 0-19
 
-  // 回復カードは強力なのでコスト高め
+  // 回復カードは強力なのでコスト高め（2-5）
   if (isHealingCard(name, category)) {
-    if (variant < 2) return 1; // 20%: 低コスト・低効果
-    if (variant < 6) return 2; // 40%: 中コスト
-    return 3; // 40%: 高コスト・高効果
+    if (variant < 6) return 2;      // 30%: コスト2 (0-5)
+    if (variant < 12) return 3;     // 30%: コスト3 (6-11)
+    if (variant < 18) return 4;     // 30%: コスト4 (12-17)
+    return 5;                       // 10%: コスト5 (18-19)
   }
 
-  // スキルカード（コスト0を減らす）
+  // スキルカード（0-4）
   if (type === 'skill') {
-    if (variant < 2) return 0; // 20%: 無料
-    if (variant < 6) return 1; // 40%: 低コスト
-    return 2; // 40%: 高コスト・高効果
+    if (variant < 1) return 0;      // 5%: コスト0 (0)
+    if (variant < 6) return 1;      // 25%: コスト1 (1-5)
+    if (variant < 12) return 2;     // 30%: コスト2 (6-11)
+    if (variant < 18) return 3;     // 30%: コスト3 (12-17)
+    return 4;                       // 10%: コスト4 (18-19)
   }
 
-  // 攻撃・防御カード（コスト0を大幅に減らす）
-  if (variant < 1) return 0; // 10%: 無料（弱い）
-  if (variant < 4) return 1; // 30%: 低コスト
-  if (variant < 7) return 2; // 30%: 中コスト
-  return 3; // 30%: 高コスト・強力
+  // 攻撃・防御カード（0-6）
+  if (variant < 1) return 0;        // 5%: コスト0 (0)
+  if (variant < 4) return 1;        // 15%: コスト1 (1-3)
+  if (variant < 8) return 2;        // 20%: コスト2 (4-7)
+  if (variant < 12) return 3;       // 20%: コスト3 (8-11)
+  if (variant < 16) return 4;       // 20%: コスト4 (12-15)
+  if (variant < 19) return 5;       // 15%: コスト5 (16-18)
+  return 6;                         // 5%: コスト6 (19)
 };
 
-// コストに応じた効果値を計算（数値を全体的に上げる）
+// コストに応じた効果値を計算（コスト0-6対応）
 const calculateEffectValue = (basePower: number, type: CardType, cost: number, id: number = 0): number => {
-  const variant = getCardVariant(id);
+  const variant = getCardVariant(id); // 0-19
 
-  // コストに応じた基本値（より高い数値）
+  // コストに応じた基本値（高コストは高威力）
   const baseByCost: Record<number, [number, number]> = {
-    0: [6, 10],    // コスト0: 6-10
+    0: [6, 10],    // コスト0: 6-10（弱い）
     1: [12, 18],   // コスト1: 12-18
     2: [20, 28],   // コスト2: 20-28
-    3: [30, 45],   // コスト3: 30-45
+    3: [30, 42],   // コスト3: 30-42
+    4: [45, 60],   // コスト4: 45-60
+    5: [65, 85],   // コスト5: 65-85
+    6: [90, 120],  // コスト6: 90-120（超強力）
   };
 
-  const [min, max] = baseByCost[cost] || [12, 18];
+  const [min, max] = baseByCost[cost] || [20, 28];
 
-  // バリアントで範囲内の値を決定
+  // バリアントで範囲内の値を決定（0-19を0-1に正規化）
   const range = max - min;
-  const value = min + Math.floor((variant / 10) * range);
+  const value = min + Math.floor((variant / 20) * range);
 
   return value;
 };
@@ -686,10 +696,10 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
       target: 'self',
     });
 
-    // カテゴリに応じた追加効果
+    // カテゴリに応じた追加効果（50%の確率）
     if (category === 'emotion' || category === 'mythology') {
       // 感情・神話系は再生バフも
-      if (variant >= 5) {
+      if (variant >= 10) {  // 50%: 10-19
         effects.push({
           type: 'buff',
           value: 2,
@@ -700,7 +710,7 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
       }
     } else if (category === 'science' || category === 'philosophy') {
       // 科学・哲学系はドローも
-      if (variant >= 5) {
+      if (variant >= 10) {  // 50%: 10-19
         effects.push({
           type: 'draw',
           value: 1,
@@ -709,7 +719,7 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
       }
     } else {
       // その他はブロックも
-      if (variant >= 5) {
+      if (variant >= 10) {  // 50%: 10-19
         effects.push({
           type: 'block',
           value: Math.floor(healValue / 2),
@@ -764,9 +774,8 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
     }
   }
 
-  // レアリティボーナス: 高レアリティは追加効果
-  if (rarity >= 4 && variant >= 7) {
-    // レア4以上で30%の確率で追加効果
+  // レアリティボーナス: 高レアリティは追加効果（30%の確率）
+  if (rarity >= 4 && variant >= 14) {  // 30%: 14-19
     if (type === 'attack') {
       effects.push({
         type: 'buff',

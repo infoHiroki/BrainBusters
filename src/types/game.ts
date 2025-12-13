@@ -38,7 +38,7 @@ export interface Card {
   name: string;
   description: string;
   type: CardType;
-  cost: number;             // エネルギーコスト (0-3)
+  cost: number;             // エネルギーコスト (0-6)
   effects: CardEffect[];    // 効果リスト
   category: string;         // 既存カテゴリ
   rarity: 1 | 2 | 3 | 4 | 5;
@@ -164,7 +164,7 @@ export interface RunState {
   currentNodeId: string | null;
   seed: number;             // ランダムシード
   startedAt: number;        // 開始時刻
-  stockCard: Card | null;   // ストックカード（1枚まで保持、いつでも使用可能）
+  stockCards: Card[];       // ストックカード（最大5枚まで保持、いつでも使用可能）
 }
 
 // ショップアイテム
@@ -200,10 +200,11 @@ export interface MetaData {
 // ゲーム設定
 export const GAME_CONFIG = {
   MAX_FLOOR: 50,  // 50階ダンジョン
-  BOSS_FLOORS: [10, 20, 30, 40, 50],  // ボス5体（10階ごと）
+  BOSS_FLOORS: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],  // ボス10体（5階ごと）
   STARTING_HP: 70,
-  STARTING_ENERGY: 4,  // 4エネルギー（手札6枚、コスト高めで選択が必要）
+  STARTING_ENERGY: 7,  // 7エネルギー（コスト0-6で手札6枚中3-4枚使用を目指す）
   STARTING_HAND_SIZE: 6,  // 手札6枚
   STARTING_DECK_SIZE: 10,
   STARTING_GOLD: 50,
+  MAX_STOCK_CARDS: 5,  // ストック最大5枚
 } as const;
