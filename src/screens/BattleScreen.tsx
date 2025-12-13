@@ -106,6 +106,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // アニメーション
   const shakeAnims = useRef<Animated.Value[]>([]).current;
 
+  // 処理中フラグ（同期的に更新）
+  const isProcessingRef = useRef(false);
+
   // バトル初期化
   useEffect(() => {
     const initBattle = () => {
@@ -281,7 +284,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // ストックカードを実行（インデックス指定）
   const executeStockCard = async (card: Card, enemyIndex: number, stockIndex: number) => {
-    if (!battleState) return;
+    // 同期的にフラグをチェック（連打防止）
+    if (!battleState || isProcessingRef.current) return;
+    isProcessingRef.current = true;
 
     setIsProcessing(true);
 
@@ -367,10 +372,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         handleBattleEnd(true);
       }, 500);
       setIsProcessing(false);
+      isProcessingRef.current = false;
       return;
     }
 
     setIsProcessing(false);
+    isProcessingRef.current = false;
 
     // 自動ターン終了チェック（ストックカード使用後）
     const newEnergy = energy - card.cost + result.energyGained;
@@ -379,7 +386,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // カードを使用
   const useSelectedCard = async (cardIndex: number, enemyIndex: number = targetEnemyIndex) => {
-    if (!battleState || isProcessing) return;
+    // 同期的にフラグをチェック（連打防止）
+    if (!battleState || isProcessingRef.current) return;
+    isProcessingRef.current = true;
 
     const cardInstance = hand[cardIndex];
     const card = cardInstance.card;
@@ -387,6 +396,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // エネルギー消費
     if (card.cost > energy) {
       showMessage('エネルギー不足！');
+      isProcessingRef.current = false;
       return;
     }
 
@@ -498,10 +508,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         handleBattleEnd(true);
       }, 500);
       setIsProcessing(false);
+      isProcessingRef.current = false;
       return;
     }
 
     setIsProcessing(false);
+    isProcessingRef.current = false;
 
     // 自動ターン終了チェック（カード使用後）- 追加ドロー後の手札でチェック
     const newEnergy = energy - card.cost + result.energyGained;
@@ -606,7 +618,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         } else if (actionResult.actionType === 'buff') {
           showMessage(`${enemy.name}が自己強化！`);
         } else if (actionResult.actionType === 'debuff') {
-          showMessage(`${enemy.name}が弱体化をかけてきた！`);
+          showMessage(`${enemy.name}が躊躇をかけてきた！`);
         } else {
           showMessage(`${enemy.name}は様子を見ている...`);
         }
@@ -733,8 +745,49 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     enemies: Enemy[],
     playerStatuses: StatusEffect[]
   ) => {
+    // 敵の毒（苦悩）ダメージ処理とステータス減衰
+    const processedEnemies = enemies.map(enemy => {
+      if (enemy.hp <= 0) return enemy;
+
+      let newHp = enemy.hp;
+      let newStatuses = [...enemy.statuses];
+
+      // 苦悩（poison）ダメージを与え、スタックを1減らす
+      const poisonStatus = enemy.statuses.find(s => s.type === 'poison');
+      if (poisonStatus && poisonStatus.stacks > 0) {
+        // ダメージ適用
+        newHp = Math.max(0, enemy.hp - poisonStatus.stacks);
+        showMessage(`${enemy.name}に苦悩で${poisonStatus.stacks}ダメージ！`);
+
+        // スタックを1減らす
+        newStatuses = enemy.statuses.map(s => {
+          if (s.type === 'poison') {
+            return { ...s, stacks: s.stacks - 1 };
+          }
+          return s;
+        }).filter(s => s.stacks > 0);
+      }
+
+      // 他のステータス効果の持続ターン減少
+      newStatuses = newStatuses.map(s => {
+        if (s.duration && s.duration > 1) {
+          return { ...s, duration: s.duration - 1 };
+        } else if (s.duration === 1) {
+          // 持続ターン切れ - スタックを0にしてフィルタで除去
+          return { ...s, stacks: 0 };
+        }
+        return s;
+      }).filter(s => s.stacks > 0);
+
+      return {
+        ...enemy,
+        hp: newHp,
+        statuses: newStatuses,
+      };
+    });
+
     // 次の行動を決定
-    const enemiesWithNewIntent = enemies.map(enemy => ({
+    const enemiesWithNewIntent = processedEnemies.map(enemy => ({
       ...enemy,
       intent: selectNextIntent(enemy),
     }));
@@ -756,15 +809,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   };
 
   // 次の敵行動を選択（runStoreからインポートできない場合はここで定義）
-  const selectNextIntent = (enemy: Enemy): Enemy['intent'] => {
-    const patterns = enemy.patterns || [
-      { type: 'attack' as const, value: 8, weight: 60 },
-      { type: 'defend' as const, value: 5, weight: 20 },
-      { type: 'buff' as const, value: 2, weight: 10 },
-      { type: 'debuff' as const, value: 2, weight: 10 },
+  const selectNextIntent = (_enemy: Enemy): Enemy['intent'] => {
+    const patterns: Array<{ type: 'attack' | 'defend' | 'buff' | 'debuff'; value: number; weight: number }> = [
+      { type: 'attack', value: 8, weight: 60 },
+      { type: 'defend', value: 5, weight: 20 },
+      { type: 'buff', value: 2, weight: 10 },
+      { type: 'debuff', value: 2, weight: 10 },
     ];
 
-    const totalWeight = patterns.reduce((sum, p) => sum + (p.weight || 1), 0);
+    const totalWeight = patterns.reduce((sum: number, p) => sum + (p.weight || 1), 0);
     let random = Math.random() * totalWeight;
 
     for (const pattern of patterns) {
@@ -795,16 +848,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // 新しいターンを開始
   const startNewTurn = () => {
-    // 再生バフの処理（ターン開始時にHP回復）
+    // 調和バフの処理（ターン開始時にHP回復）
     if (battleState) {
       const regenStatus = battleState.playerStatuses.find(s => s.type === 'regeneration');
       if (regenStatus && regenStatus.stacks > 0) {
         const healAmount = regenStatus.stacks;
         setHp(prev => Math.min(runState.maxHp, prev + healAmount));
         addFloatingNumber(healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
-        showMessage(`再生で${healAmount}HP回復！`);
+        showMessage(`調和で${healAmount}HP回復！`);
 
-        // 再生のスタック/ターン減少
+        // 調和のスタック/ターン減少
         setBattleState(prev => {
           if (!prev) return prev;
           const newStatuses = prev.playerStatuses.map(s => {
@@ -845,6 +898,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setDiscardPile(result.discardPile);
       setTurnPhase('player');
       setIsProcessing(false);
+      isProcessingRef.current = false;
     }, 300);
   };
 
@@ -1355,17 +1409,17 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    gap: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
   },
   statusIcon: {
-    fontSize: 12,
+    fontSize: 18,
   },
   statusValue: {
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   // メッセージ（スタック表示）

@@ -161,7 +161,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [{ type: 'damage', valueMultiplier: 1.3, target: 'enemy' }],
       // 恐怖系: ダメージ + 弱体化
       [
-        { type: 'damage', valueMultiplier: 0.9, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.55, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
       ],
       // 悲しみ系: 全体攻撃
@@ -176,7 +176,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 希望系: ブロック + 再生
       [
         { type: 'block', valueMultiplier: 0.7, target: 'self' },
-        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 4, extraValue: 6 },
       ],
       // 愛系: ブロック + 回復
       [
@@ -207,7 +207,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       ],
       // 突進系: ダメージ + 敵弱体
       [
-        { type: 'damage', valueMultiplier: 0.9, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.55, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
       ],
       // 全力攻撃: 高ダメージ
@@ -255,8 +255,8 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
       // 啓蒙: ダメージ + 敵脆弱
       [
-        { type: 'damage', valueMultiplier: 0.85, target: 'enemy' },
-        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+        { type: 'damage', valueMultiplier: 0.55, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
       ],
     ],
     defensePatterns: [
@@ -291,9 +291,9 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
       // 因果: ダメージ + デバフ
       [
-        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
-        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
       ],
       // 存在: 高威力単体
       [{ type: 'damage', valueMultiplier: 1.15, target: 'enemy' }],
@@ -307,7 +307,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 永遠: ブロック + 再生
       [
         { type: 'block', valueMultiplier: 0.5, target: 'self' },
-        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 3, extraValue: 3 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 4, extraValue: 8 },
       ],
     ],
     skillPatterns: [
@@ -346,7 +346,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 加護: ブロック + 再生
       [
         { type: 'block', valueMultiplier: 0.6, target: 'self' },
-        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 3, extraValue: 4 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 5, extraValue: 10 },
       ],
     ],
     skillPatterns: [
@@ -359,7 +359,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [
         { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
         { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 3, extraValue: 2 },
-        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 4, extraValue: 6 },
       ],
     ],
   },
@@ -369,17 +369,17 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
     attackPatterns: [
       // 心理攻撃: ダメージ + 弱体
       [
-        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
       ],
       // 恐怖誘発: ダメージ + 脆弱
       [
-        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
-        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 2 },
       ],
       // 混乱: 全体攻撃 + デバフ
       [
-        { type: 'damage', valueMultiplier: 0.8, target: 'all_enemies' },
+        { type: 'damage', valueMultiplier: 0.5, target: 'all_enemies' },
         { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 1 },
       ],
     ],
@@ -401,7 +401,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 催眠: 全体デバフ
       [
         { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 2 },
-        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 1, extraValue: 2 },
       ],
     ],
   },
@@ -413,7 +413,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [{ type: 'damage', valueMultiplier: 1.15, target: 'enemy' }],
       // 化学反応: ダメージ + 毒
       [
-        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'poison', extraValue: 4 },
       ],
       // 連鎖反応: 全体攻撃
@@ -492,8 +492,8 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
       // 痛烈な一言: ダメージ + デバフ
       [
-        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
-        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 2 },
       ],
       // 演説: 全体攻撃
       [{ type: 'damage', valueMultiplier: 0.9, target: 'all_enemies' }],
@@ -533,7 +533,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
     attackPatterns: [
       // 文化の衝撃: ダメージ + デバフ
       [
-        { type: 'damage', valueMultiplier: 0.85, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.55, target: 'enemy' },
         { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 1 },
       ],
       // 伝統の力: 高威力
@@ -547,7 +547,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 儀式: ブロック + 再生
       [
         { type: 'block', valueMultiplier: 0.5, target: 'self' },
-        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 4, extraValue: 6 },
       ],
     ],
     skillPatterns: [
@@ -596,8 +596,8 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
     attackPatterns: [
       // 社会的圧力: ダメージ + デバフ
       [
-        { type: 'damage', valueMultiplier: 0.75, target: 'enemy' },
-        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 2 },
       ],
       // 革命: 全体攻撃
       [{ type: 'damage', valueMultiplier: 0.95, target: 'all_enemies' }],
@@ -625,7 +625,7 @@ const categoryTemplates: Record<string, CategoryTemplate> = {
       // 改革: 全体デバフ
       [
         { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 1 },
-        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
       ],
     ],
   },
@@ -851,23 +851,61 @@ const generateCardDescription = (effects: CardEffect[], type: CardType): string 
 // ステータス名を取得
 const getStatusName = (statusType: string): string => {
   switch (statusType) {
-    case 'strength': return '筋力';
-    case 'dexterity': return '敏捷';
-    case 'vulnerable': return '脆弱';
-    case 'weak': return '弱体';
-    case 'frail': return '衰弱';
-    case 'poison': return '毒';
-    case 'regeneration': return '再生';
+    case 'strength': return '闘志';
+    case 'dexterity': return '克己';
+    case 'vulnerable': return '不安';
+    case 'weak': return '躊躇';
+    case 'frail': return '倦怠';
+    case 'poison': return '苦悩';
+    case 'regeneration': return '調和';
     default: return statusType;
+  }
+};
+
+// レア度に応じた効果値倍率（バランス調整）
+const getRarityMultiplier = (rarity: number): number => {
+  switch (rarity) {
+    case 1: return 0.9;   // ★1: 弱い
+    case 2: return 1.0;   // ★2: 基準
+    case 3: return 1.1;   // ★3: やや強い
+    case 4: return 1.2;   // ★4: 強い
+    case 5: return 1.3;   // ★5: 最強
+    default: return 1.0;
   }
 };
 
 // 概念をカードに変換
 const convertConceptToCard = (concept: Concept): Card => {
   const type = getCategoryType(concept.category, concept.name);
-  const cost = calculateCost(concept.basePower, type, concept.name, concept.category, concept.id);
-  const effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category, concept.id);
+  let cost = calculateCost(concept.basePower, type, concept.name, concept.category, concept.id);
+  let effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category, concept.id);
+
+  // レア度に応じた効果値ボーナス（ダメージ・ブロック・回復に適用）
+  const rarityMultiplier = getRarityMultiplier(concept.rarity);
+  effects = effects.map(e => {
+    if (e.type === 'damage' || e.type === 'block' || e.type === 'heal') {
+      return { ...e, value: Math.floor(e.value * rarityMultiplier) };
+    }
+    return e;
+  });
+
   const description = generateCardDescription(effects, type);
+
+  // デバフカードの最低コスト制限（バランス調整）
+  const hasEnemyDebuff = effects.some(e =>
+    e.type === 'debuff' && (e.target === 'enemy' || e.target === 'all_enemies')
+  );
+  const hasAllEnemyDebuff = effects.some(e =>
+    e.type === 'debuff' && e.target === 'all_enemies'
+  );
+
+  if (hasAllEnemyDebuff) {
+    // 全体デバフは最低コスト3
+    cost = Math.max(cost, 3);
+  } else if (hasEnemyDebuff) {
+    // 単体デバフは最低コスト2
+    cost = Math.max(cost, 2);
+  }
 
   return {
     id: concept.id,
