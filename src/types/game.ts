@@ -152,7 +152,7 @@ export interface BattleState {
 // ラン状態
 export interface RunState {
   id: string;               // ランID
-  floor: number;            // 現在階 (1-15)
+  floor: number;            // 現在階 (1-25)
   hp: number;
   maxHp: number;
   deck: CardInstance[];     // 全デッキ
@@ -164,6 +164,7 @@ export interface RunState {
   currentNodeId: string | null;
   seed: number;             // ランダムシード
   startedAt: number;        // 開始時刻
+  stockCard: Card | null;   // ストックカード（1枚まで保持、いつでも使用可能）
 }
 
 // ショップアイテム
@@ -198,11 +199,11 @@ export interface MetaData {
 
 // ゲーム設定
 export const GAME_CONFIG = {
-  MAX_FLOOR: 15,
-  BOSS_FLOORS: [5, 10, 15],
-  STARTING_HP: 50,
-  STARTING_ENERGY: 3,
-  STARTING_HAND_SIZE: 5,
+  MAX_FLOOR: 25,  // ゲームを長く
+  BOSS_FLOORS: [5, 10, 15, 20, 25],  // ボス5体
+  STARTING_HP: 60,
+  STARTING_ENERGY: 5,  // 選択肢を増やすため増加
+  STARTING_HAND_SIZE: 6,  // 手札も増加
   STARTING_DECK_SIZE: 10,
   STARTING_GOLD: 50,
 } as const;
