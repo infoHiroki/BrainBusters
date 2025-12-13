@@ -71,17 +71,24 @@ const getCategoryType = (category: string, name: string): CardType => {
 };
 
 // basePowerからコストを計算
-const calculateCost = (basePower: number, type: CardType): number => {
-  // 基本コスト計算
+const calculateCost = (basePower: number, type: CardType, name: string = '', category: string = ''): number => {
+  // 回復カードは中程度のコスト（強力なため）
+  if (isHealingCard(name, category)) {
+    if (basePower >= 70) return 2;
+    return 1;
+  }
+
+  // スキルカード（ドロー系）は低コストに
+  if (type === 'skill') {
+    if (basePower >= 85) return 1;
+    return 0;
+  }
+
+  // 攻撃・防御カード
   if (basePower >= 85) return 3;
   if (basePower >= 70) return 2;
   if (basePower >= 50) return 1;
   return 0;
-
-  // スキルカードは若干コストを下げる
-  // if (type === 'skill' && cost > 0) {
-  //   return cost - 1;
-  // }
 };
 
 // basePowerから効果値を計算
@@ -266,7 +273,7 @@ const getStatusName = (statusType: string): string => {
 // 概念をカードに変換
 const convertConceptToCard = (concept: Concept): Card => {
   const type = getCategoryType(concept.category, concept.name);
-  const cost = calculateCost(concept.basePower, type);
+  const cost = calculateCost(concept.basePower, type, concept.name, concept.category);
   const effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category);
   const description = generateCardDescription(effects, type);
 
