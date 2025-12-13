@@ -30,19 +30,23 @@ const createCardInstance = (card: Card): CardInstance => ({
 });
 
 // マップを生成（シンプルな一本道）
+// 休憩所は削除、ボス撃破時に回復
 const generateMap = (): MapNode[] => {
   const nodes: MapNode[] = [];
+
+  // エリート階: 2, 4, 7, 9, 12, 14, 17, 19, 22, 24
+  const eliteFloors = [2, 4, 7, 9, 12, 14, 17, 19, 22, 24];
+  // ショップ階（休憩所は廃止）: 3, 6, 8, 11, 13, 16, 18, 21, 23
+  const shopFloors = [3, 6, 8, 11, 13, 16, 18, 21, 23];
 
   for (let floor = 1; floor <= GAME_CONFIG.MAX_FLOOR; floor++) {
     let type: MapNode['type'];
 
     if ((GAME_CONFIG.BOSS_FLOORS as readonly number[]).includes(floor)) {
       type = 'boss';
-    } else if (floor % 3 === 0) {
-      // 3, 6, 9, 12 階はショップ or 休憩
-      type = Math.random() < 0.5 ? 'shop' : 'rest';
-    } else if (floor === 2 || floor === 7 || floor === 12) {
-      // エリート戦
+    } else if (shopFloors.includes(floor)) {
+      type = 'shop';
+    } else if (eliteFloors.includes(floor)) {
       type = 'elite';
     } else {
       type = 'battle';
@@ -79,6 +83,7 @@ export const startNewRun = async (): Promise<RunState> => {
     currentNodeId: 'floor_1',
     seed: Math.floor(Math.random() * 1000000),
     startedAt: Date.now(),
+    stockCard: null,  // ストックカードは最初は空
   };
 
   await saveRunState(runState);
@@ -361,7 +366,7 @@ export const processEnemyTurn = (
   damages: number[];
 } => {
   let newHp = currentHp;
-  let newBlock = 0; // プレイヤーのブロックはターン開始時にリセット
+  let newBlock = currentBlock; // ブロックを引き継ぐ（敵の攻撃を防ぐ）
   const damages: number[] = [];
 
   const newEnemies = battleState.enemies.map(enemy => {
@@ -586,6 +591,37 @@ export const upgradeCardInDeck = async (
   const newState: RunState = {
     ...latestState,
     deck: newDeck,
+  };
+  await saveRunState(newState);
+  return newState;
+};
+
+// ストックカードを設定
+export const setStockCard = async (
+  _runState: RunState,
+  card: Card
+): Promise<RunState> => {
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
+  const newState: RunState = {
+    ...latestState,
+    stockCard: card,
+  };
+  await saveRunState(newState);
+  return newState;
+};
+
+// ストックカードを使用（クリア）
+export const useStockCard = async (
+  _runState: RunState
+): Promise<RunState> => {
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
+  const newState: RunState = {
+    ...latestState,
+    stockCard: null,
   };
   await saveRunState(newState);
   return newState;
