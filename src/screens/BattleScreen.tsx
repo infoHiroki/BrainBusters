@@ -817,15 +817,16 @@ const styles = StyleSheet.create({
   },
   // 手札エリア
   handArea: {
-    height: 200,
-    paddingBottom: 16,
+    height: 180,
+    paddingBottom: 8,
+    paddingTop: 8,
     width: '100%',
     maxWidth: 500,
   },
   handContainer: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
     minWidth: '100%',
   },

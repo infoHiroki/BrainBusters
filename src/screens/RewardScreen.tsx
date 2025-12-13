@@ -187,11 +187,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a1a',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
     paddingTop: 40,
     paddingBottom: 20,
+    width: '100%',
+    maxWidth: 500,
   },
   title: {
     color: '#FFD700',
@@ -205,6 +208,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
+    maxWidth: 500,
   },
   contentContainer: {
     paddingHorizontal: 16,
@@ -307,6 +312,8 @@ const styles = StyleSheet.create({
   footer: {
     padding: 16,
     paddingBottom: 32,
+    width: '100%',
+    maxWidth: 500,
   },
   proceedButton: {
     borderRadius: 12,
