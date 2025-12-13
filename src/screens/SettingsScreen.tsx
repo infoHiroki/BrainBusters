@@ -162,7 +162,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
 
             <View style={styles.ruleBlock}>
-              <Text style={styles.ruleTitle}>ステータス効果</Text>
+              <Text style={styles.ruleTitle}>ステータス効果（バフ）</Text>
               <View style={styles.statusRow}>
                 <Text style={[styles.statusName, { color: '#2ECC71' }]}>筋力</Text>
                 <Text style={styles.statusDesc}>攻撃ダメージ +スタック数</Text>
@@ -172,6 +172,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <Text style={styles.statusDesc}>ブロック +スタック数</Text>
               </View>
               <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#2ECC71' }]}>再生</Text>
+                <Text style={styles.statusDesc}>ターン開始時にスタック数分HP回復</Text>
+              </View>
+            </View>
+
+            <View style={styles.ruleBlock}>
+              <Text style={styles.ruleTitle}>ステータス効果（デバフ）</Text>
+              <View style={styles.statusRow}>
                 <Text style={[styles.statusName, { color: '#E74C3C' }]}>脆弱</Text>
                 <Text style={styles.statusDesc}>被ダメージ +50%</Text>
               </View>
@@ -180,8 +188,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <Text style={styles.statusDesc}>与ダメージ -25%</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#2ECC71' }]}>再生</Text>
-                <Text style={styles.statusDesc}>ターン開始時にHP回復</Text>
+                <Text style={[styles.statusName, { color: '#E74C3C' }]}>衰弱</Text>
+                <Text style={styles.statusDesc}>ブロック -25%</Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#9B59B6' }]}>毒</Text>
+                <Text style={styles.statusDesc}>ターン終了時にスタック数分ダメージ</Text>
               </View>
             </View>
 
@@ -192,6 +204,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 • 5F, 10F, 15F: ボス戦{'\n'}
                 • 休憩所: 最大HPの30%回復{'\n'}
                 • 勝利するとカード報酬を獲得
+              </Text>
+            </View>
+
+            <View style={styles.ruleBlock}>
+              <Text style={styles.ruleTitle}>カードのレアリティ</Text>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#9CA3AF' }]}>★</Text>
+                <Text style={styles.statusDesc}>コモン（よく出る）</Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#9CA3AF' }]}>★★</Text>
+                <Text style={styles.statusDesc}>アンコモン</Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#3498db' }]}>★★★</Text>
+                <Text style={styles.statusDesc}>レア（強力）</Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#9932CC' }]}>★★★★</Text>
+                <Text style={styles.statusDesc}>エピック（かなり強力）</Text>
+              </View>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusName, { color: '#FFD700' }]}>★★★★★</Text>
+                <Text style={styles.statusDesc}>レジェンダリー（最強）</Text>
+              </View>
+            </View>
+
+            <View style={styles.ruleBlock}>
+              <Text style={styles.ruleTitle}>レリック</Text>
+              <Text style={styles.ruleText}>
+                • ボス撃破時にレリックを獲得{'\n'}
+                • レリックは常時発動する特殊効果{'\n'}
+                • 「ターン開始時」「戦闘開始時」などの{'\n'}
+                　トリガー条件で効果が発動{'\n'}
+                • 冒険中ずっと効果が持続
+              </Text>
+            </View>
+
+            <View style={styles.ruleBlock}>
+              <Text style={styles.ruleTitle}>報酬画面</Text>
+              <Text style={styles.ruleText}>
+                • 戦闘勝利後にカードを1枚選択可能{'\n'}
+                • カードは選び直しが可能{'\n'}
+                • 「次の階へ進む」で確定{'\n'}
+                • カードを選ばずに進むことも可能
               </Text>
             </View>
           </View>
