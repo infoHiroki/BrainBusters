@@ -313,6 +313,11 @@ export const getCardsByCost = (cost: number): Card[] => {
   return cards.filter(c => c.cost === cost);
 };
 
+// 回復カードを取得
+export const getHealingCards = (): Card[] => {
+  return cards.filter(c => c.effects.some(e => e.type === 'heal'));
+};
+
 // ランダムなカードを取得
 export const getRandomCard = (): Card => {
   return cards[Math.floor(Math.random() * cards.length)];
@@ -390,6 +395,17 @@ export const generateRewardCards = (floor: number): Card[] => {
       return 1;
     }
   };
+
+  // 30%の確率で回復カードを1枚含める
+  const includeHealCard = Math.random() < 0.3;
+  if (includeHealCard) {
+    const healingCards = getHealingCards().filter(c => !usedIds.has(c.id));
+    if (healingCards.length > 0) {
+      const healCard = healingCards[Math.floor(Math.random() * healingCards.length)];
+      rewards.push(healCard);
+      usedIds.add(healCard.id);
+    }
+  }
 
   while (rewards.length < 3) {
     const rarity = getFloorRarity();

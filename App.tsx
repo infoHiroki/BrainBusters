@@ -1,20 +1,20 @@
 // BrainBusters - ローグライクカードゲーム
-// シンプルなルーター
 
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { TitleScreen } from './src/screens/TitleScreen';
 import { RunScreen } from './src/screens/RunScreen';
-import { HelpScreen } from './src/screens/HelpScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { loadStats, GameStats } from './src/store/statsStore';
+import { clearRunState } from './src/store/runStore';
 
-type Screen = 'home' | 'run' | 'help' | 'settings';
+type Screen = 'title' | 'run' | 'settings';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('title');
   const [stats, setStats] = useState<GameStats | null>(null);
+  const [startNewGame, setStartNewGame] = useState(false);
 
   // 統計データを読み込む
   useEffect(() => {
@@ -30,27 +30,36 @@ export default function App() {
     setStats(newStats);
   };
 
-  // ホーム画面
-  if (currentScreen === 'home') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
-        <HomeScreen
-          stats={stats}
-          onStartRun={() => setCurrentScreen('run')}
-          onOpenHelp={() => setCurrentScreen('help')}
-          onOpenSettings={() => setCurrentScreen('settings')}
-        />
-      </SafeAreaView>
-    );
-  }
+  // つづきから
+  const handleContinue = () => {
+    setStartNewGame(false);
+    setCurrentScreen('run');
+  };
 
-  // ヘルプ画面
-  if (currentScreen === 'help') {
+  // はじめから（新規ゲーム）
+  const handleNewGame = async () => {
+    // 既存のランデータをクリア
+    await clearRunState();
+    setStartNewGame(true);
+    setCurrentScreen('run');
+  };
+
+  // ゲーム終了時
+  const handleExitRun = () => {
+    setStartNewGame(false);
+    setCurrentScreen('title');
+  };
+
+  // タイトル画面
+  if (currentScreen === 'title') {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
-        <HelpScreen onBack={() => setCurrentScreen('home')} />
+        <TitleScreen
+          onContinue={handleContinue}
+          onNewGame={handleNewGame}
+          onSettings={() => setCurrentScreen('settings')}
+        />
       </SafeAreaView>
     );
   }
@@ -61,7 +70,7 @@ export default function App() {
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
         <SettingsScreen
-          onBack={() => setCurrentScreen('home')}
+          onBack={() => setCurrentScreen('title')}
           onStatsReset={handleStatsUpdate}
         />
       </SafeAreaView>
@@ -73,7 +82,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <RunScreen
-        onExit={() => setCurrentScreen('home')}
+        onExit={handleExitRun}
         onStatsUpdate={handleStatsUpdate}
       />
     </SafeAreaView>
