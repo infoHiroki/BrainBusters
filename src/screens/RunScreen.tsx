@@ -108,12 +108,11 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
     if (isElite) gold += 15;
     if (isBoss) gold += 30;
 
-    // ボス撃破時にHP回復（最大HPの30%）
+    // ボス撃破時にHP全回復
     let finalRunState = updatedRunState;
     if (isBoss) {
-      const healAmount = Math.floor(updatedRunState.maxHp * 0.3);
-      const newHp = Math.min(updatedRunState.maxHp, updatedRunState.hp + healAmount);
-      finalRunState = await healPlayer(updatedRunState, newHp - updatedRunState.hp);
+      const healAmount = updatedRunState.maxHp - updatedRunState.hp;
+      finalRunState = await healPlayer(updatedRunState, healAmount);
     }
 
     setGoldReward(gold);
