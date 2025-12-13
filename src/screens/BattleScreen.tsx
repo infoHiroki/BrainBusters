@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RunState, BattleState, CardInstance, Enemy } from '../types/game';
+import { RunState, BattleState, CardInstance, Enemy, Card } from '../types/game';
 import { BattleCard } from '../components/BattleCard';
 import { EnemyDisplay } from '../components/EnemyDisplay';
 import {
@@ -23,6 +23,7 @@ import {
   processEnemyTurn,
   isBattleWon,
   isBattleLost,
+  useStockCard,
 } from '../store/runStore';
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
 import { GAME_CONFIG } from '../types/game';
@@ -45,11 +46,11 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 1500, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: -60, duration: 1500, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: 2500, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: -80, duration: 2500, useNativeDriver: true }),
       Animated.sequence([
-        Animated.timing(scale, { toValue: 1.2, duration: 200, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1.3, duration: 300, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]),
     ]).start(onComplete);
   }, []);
@@ -93,6 +94,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [enemiesKilledThisBattle, setEnemiesKilledThisBattle] = useState<number>(0);
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
   const [isSelectingTarget, setIsSelectingTarget] = useState(false);
+  const [stockCardUsed, setStockCardUsed] = useState(false);
+  const [currentRunState, setCurrentRunState] = useState<RunState>(runState);
+  const [showRelicsPanel, setShowRelicsPanel] = useState(false);
 
   // アニメーション
   const shakeAnims = useRef<Animated.Value[]>([]).current;
@@ -138,10 +142,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setMessage(msg);
     messageOpacity.setValue(1);
     Animated.sequence([
-      Animated.delay(1000),
+      Animated.delay(1800),
       Animated.timing(messageOpacity, {
         toValue: 0,
-        duration: 500,
+        duration: 600,
         useNativeDriver: true,
       }),
     ]).start();
@@ -217,6 +221,130 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const cancelCardSelection = () => {
     setSelectedCardIndex(null);
     setIsSelectingTarget(false);
+  };
+
+  // ストックカードを使用
+  const handleUseStockCard = async () => {
+    if (!battleState || isProcessing || turnPhase !== 'player' || stockCardUsed) return;
+    const stockCard = currentRunState.stockCard;
+    if (!stockCard) return;
+
+    // 使用可能かチェック
+    if (!canPlayCard(stockCard, energy, battleState.enemies)) {
+      showMessage('エネルギー不足！');
+      return;
+    }
+
+    // 攻撃カードでターゲット選択が必要な場合
+    const needsTarget = stockCard.type === 'attack' ||
+      stockCard.effects.some(e => e.target === 'enemy');
+
+    if (needsTarget) {
+      const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+      if (aliveEnemies.length > 1) {
+        // 敵が複数の場合は最初の生存敵をターゲットに
+        const targetIndex = battleState.enemies.findIndex(e => e.hp > 0);
+        await executeStockCard(stockCard, targetIndex);
+      } else {
+        const targetIndex = battleState.enemies.findIndex(e => e.hp > 0);
+        await executeStockCard(stockCard, targetIndex);
+      }
+    } else {
+      await executeStockCard(stockCard, 0);
+    }
+  };
+
+  // ストックカードを実行
+  const executeStockCard = async (card: Card, enemyIndex: number) => {
+    if (!battleState) return;
+
+    setIsProcessing(true);
+
+    // カード効果を実行
+    const result = playCardEffects(
+      card,
+      { ...battleState, playerBlock },
+      enemyIndex,
+      currentRunState.relics
+    );
+
+    // フローティングダメージを表示
+    if (result.damageDealt.length > 0) {
+      const totalDamage = result.damageDealt.reduce((a, b) => a + b, 0);
+      result.damageDealt.forEach((damage, i) => {
+        if (damage > 0) {
+          const targetIndex = card.effects.some(e => e.target === 'all_enemies') ? i : enemyIndex;
+          const xOffset = SCREEN_WIDTH / 2 + (targetIndex - (battleState.enemies.length - 1) / 2) * 160;
+          addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+        }
+      });
+      showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`);
+    }
+
+    // ブロック獲得を表示
+    const blockGained = result.playerBlock - playerBlock;
+    if (blockGained > 0) {
+      addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      showMessage(`📦 ${card.name}: ${blockGained}ブロック獲得！`);
+    }
+
+    // 敵へのダメージアニメーション
+    if (result.damageDealt.length > 0) {
+      const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
+      result.enemies.forEach((enemy, i) => {
+        const tookDamage = isAllTarget || i === enemyIndex;
+        if (tookDamage && enemy.hp >= 0 && shakeAnims[i]) {
+          Animated.sequence([
+            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+          ]).start();
+        }
+      });
+    }
+
+    // 状態を更新
+    setEnergy(prev => prev - card.cost + result.energyGained);
+    setPlayerBlock(result.playerBlock);
+    setBattleState(prev => prev ? {
+      ...prev,
+      enemies: result.enemies,
+      playerStatuses: result.playerStatuses,
+    } : null);
+
+    // HP回復
+    if (result.healAmount > 0) {
+      addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      setHp(prev => Math.min(currentRunState.maxHp, prev + result.healAmount));
+    }
+
+    // 倒した敵のカウント
+    setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
+
+    // 追加ドロー
+    if (result.cardsDrawn > 0) {
+      const drawResult = drawCards(drawPile, discardPile, hand, result.cardsDrawn);
+      setHand(drawResult.hand);
+      setDrawPile(drawResult.drawPile);
+      setDiscardPile(drawResult.discardPile);
+    }
+
+    // ストックカードを使用済みにする（永続保存）
+    const newRunState = await useStockCard(currentRunState);
+    setCurrentRunState(newRunState);
+    setStockCardUsed(true);
+
+    // 勝利判定
+    if (isBattleWon({ ...battleState, enemies: result.enemies })) {
+      setTimeout(() => {
+        handleBattleEnd(true);
+      }, 500);
+      setIsProcessing(false);
+      return;
+    }
+
+    setIsProcessing(false);
   };
 
   // カードを使用
@@ -369,68 +497,79 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('enemy');
     setSelectedCardIndex(null);
 
-    // 敵のターン処理 - 段階的なアニメーション表示
+    // 敵のターン処理 - 各敵の行動を順番に表示
     setTimeout(() => {
-      // 攻撃する敵のintentを取得
-      const attackingEnemies = battleState.enemies.filter(e =>
-        e.hp > 0 && e.intent.type === 'attack'
-      );
-      const totalIntent = attackingEnemies.reduce((sum, e) => sum + (e.intent.value || 0), 0);
-
       const enemyResult = processEnemyTurn(battleState, hp, playerBlock);
 
-      // ダメージ計算の詳細
+      // 生存している敵の行動を集計
+      const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+      const actions: string[] = [];
+
+      aliveEnemies.forEach(enemy => {
+        switch (enemy.intent.type) {
+          case 'attack':
+            actions.push(`${enemy.name}が${enemy.intent.value}攻撃！`);
+            break;
+          case 'defend':
+            actions.push(`${enemy.name}が${enemy.intent.value}防御！`);
+            break;
+          case 'buff':
+            actions.push(`${enemy.name}が強化！`);
+            break;
+          case 'debuff':
+            actions.push(`${enemy.name}が弱体化！`);
+            break;
+        }
+      });
+
+      // 攻撃ダメージの計算
+      const attackingEnemies = aliveEnemies.filter(e => e.intent.type === 'attack');
+      const totalIntent = attackingEnemies.reduce((sum, e) => sum + (e.intent.value || 0), 0);
       const blockedAmount = Math.min(playerBlock, totalIntent);
       const actualDamage = hp - enemyResult.hp;
 
-      if (totalIntent > 0) {
-        // Step 1: 攻撃表示
-        showMessage(`⚔️ 敵の攻撃！ ${totalIntent}`);
+      // Step 1: 各敵の行動を表示
+      if (actions.length > 0) {
+        showMessage(`⚔️ ${actions[0]}`);
+      }
 
-        setTimeout(() => {
+      setTimeout(() => {
+        if (totalIntent > 0) {
+          // 攻撃があった場合
           if (playerBlock > 0 && blockedAmount > 0) {
-            // Step 2: ブロック表示
-            showMessage(`🛡️ ブロック ${blockedAmount}`);
-            addFloatingNumber(blockedAmount, 'block', SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT * 0.65);
-
-            setTimeout(() => {
-              if (actualDamage > 0) {
-                // Step 3: 最終ダメージ
-                showMessage(`💥 ${actualDamage} ダメージ！`);
-                addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-              } else {
-                // 完全ブロック
-                showMessage(`✨ 完全ブロック！`);
-              }
-              // 状態更新
-              setHp(enemyResult.hp);
-              setPlayerBlock(enemyResult.block);
-              setBattleState(enemyResult.battleState);
-              checkBattleEndAndContinue(enemyResult);
-            }, 600);
-          } else {
-            // ブロックなし - 直接ダメージ
-            showMessage(`💥 ${actualDamage} ダメージ！`);
+            showMessage(`🛡️ ${blockedAmount}ブロック → ${actualDamage > 0 ? `${actualDamage}ダメージ！` : '完全防御！'}`);
+            if (blockedAmount > 0) {
+              addFloatingNumber(blockedAmount, 'block', SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT * 0.65);
+            }
+            if (actualDamage > 0) {
+              addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
+            }
+          } else if (actualDamage > 0) {
+            showMessage(`💥 ${actualDamage}ダメージ！`);
             addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-            setHp(enemyResult.hp);
-            setPlayerBlock(enemyResult.block);
-            setBattleState(enemyResult.battleState);
-            checkBattleEndAndContinue(enemyResult);
           }
-        }, 600);
-      } else {
-        // 敵が防御やバフの場合
-        const defendingEnemy = battleState.enemies.find(e =>
-          e.hp > 0 && e.intent.type === 'defend'
-        );
-        if (defendingEnemy) {
-          showMessage(`🛡️ 敵がブロック +${defendingEnemy.intent.value}`);
+        } else {
+          // 攻撃がなかった場合（防御やバフのみ）
+          const nonAttackActions = aliveEnemies
+            .filter(e => e.intent.type !== 'attack')
+            .map(e => {
+              if (e.intent.type === 'defend') return `🛡️${e.name} +${e.intent.value}防御`;
+              if (e.intent.type === 'buff') return `⬆️${e.name} 強化`;
+              if (e.intent.type === 'debuff') return `⬇️${e.name} 弱体化`;
+              return '';
+            })
+            .filter(s => s);
+          if (nonAttackActions.length > 0) {
+            showMessage(nonAttackActions.join(' / '));
+          }
         }
+
+        // 状態更新
         setHp(enemyResult.hp);
         setPlayerBlock(enemyResult.block);
         setBattleState(enemyResult.battleState);
         checkBattleEndAndContinue(enemyResult);
-      }
+      }, 700);
     }, 500);
   };
 
@@ -508,7 +647,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // バトル終了処理
   const handleBattleEnd = (victory: boolean) => {
     const updatedRunState: RunState = {
-      ...runState,
+      ...currentRunState,
       hp: victory ? hp : 0,
     };
     onBattleEnd(victory, updatedRunState);
@@ -540,6 +679,39 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           {turnPhase === 'enemy' ? '敵ターン' : `ターン${battleState.turn}`}
         </Text>
       </View>
+
+      {/* レリックアイコン（タップで展開） */}
+      {currentRunState.relics.length > 0 && (
+        <TouchableOpacity
+          style={styles.relicIconButton}
+          onPress={() => setShowRelicsPanel(!showRelicsPanel)}
+        >
+          <Text style={styles.relicIconText}>🏆</Text>
+          <Text style={styles.relicCountText}>{currentRunState.relics.length}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* レリック詳細パネル（展開時） */}
+      {showRelicsPanel && currentRunState.relics.length > 0 && (
+        <TouchableOpacity
+          style={styles.relicsPanelOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRelicsPanel(false)}
+        >
+          <View style={styles.relicsPanel}>
+            <Text style={styles.relicsPanelTitle}>🏆 所持レリック</Text>
+            <ScrollView style={styles.relicsPanelScroll}>
+              {currentRunState.relics.map((relic, index) => (
+                <View key={index} style={styles.relicPanelItem}>
+                  <Text style={styles.relicPanelName}>{relic.name}</Text>
+                  <Text style={styles.relicPanelDesc}>{relic.description}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <Text style={styles.relicsPanelHint}>タップして閉じる</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* バトルフィールド */}
       <View style={styles.battlefield}>
@@ -636,6 +808,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
       {/* アクションバー */}
       <View style={styles.actionBar}>
+        {/* ストックカードボタン */}
+        {currentRunState.stockCard && !stockCardUsed && (
+          <TouchableOpacity
+            style={[
+              styles.stockCardButton,
+              (turnPhase !== 'player' || isProcessing || !canPlayCard(currentRunState.stockCard, energy, battleState.enemies)) && styles.buttonDisabled,
+            ]}
+            onPress={handleUseStockCard}
+            disabled={turnPhase !== 'player' || isProcessing || !canPlayCard(currentRunState.stockCard, energy, battleState.enemies)}
+          >
+            <Text style={styles.stockCardLabel}>📦 ストック</Text>
+            <Text style={styles.stockCardName}>{currentRunState.stockCard.name}</Text>
+            <Text style={styles.stockCardCost}>⚡{currentRunState.stockCard.cost}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[
             styles.endTurnButton,
@@ -659,7 +846,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         )}
         <ScrollView
           horizontal
-          style={{ height: 205 }}
+          style={{ height: 220, overflow: 'visible' }}
           contentContainerStyle={styles.handContainer}
           showsHorizontalScrollIndicator={true}
         >
@@ -717,6 +904,92 @@ const styles = StyleSheet.create({
   turnText: {
     color: '#aaa',
     fontSize: 14,
+  },
+  // レリックアイコン
+  relicIconButton: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    backgroundColor: 'rgba(155, 89, 182, 0.8)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    zIndex: 50,
+  },
+  relicIconText: {
+    fontSize: 18,
+  },
+  relicCountText: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FFD700',
+    color: '#000',
+    fontSize: 10,
+    fontWeight: 'bold',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  // レリック詳細パネル
+  relicsPanelOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  relicsPanel: {
+    backgroundColor: '#1a1a3e',
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: 350,
+    maxHeight: '60%',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  relicsPanelTitle: {
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  relicsPanelScroll: {
+    maxHeight: 250,
+  },
+  relicPanelItem: {
+    backgroundColor: 'rgba(155, 89, 182, 0.3)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#9b59b6',
+  },
+  relicPanelName: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  relicPanelDesc: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  relicsPanelHint: {
+    color: '#888',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 12,
   },
   // バトルフィールド
   battlefield: {
@@ -890,18 +1163,47 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   floatingNumberText: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    textShadowRadius: 6,
   },
   // アクションバー
   actionBar: {
     width: '100%',
     maxWidth: 500,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 8,
+    gap: 12,
+  },
+  stockCardButton: {
+    backgroundColor: 'rgba(108, 92, 231, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#6C5CE7',
+    alignItems: 'center',
+    minWidth: 100,
+  },
+  stockCardLabel: {
+    color: '#9B89F5',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  stockCardName: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  stockCardCost: {
+    color: '#FFD700',
+    fontSize: 11,
+    marginTop: 2,
   },
   endTurnButton: {
     backgroundColor: '#2d5a27',
@@ -921,21 +1223,25 @@ const styles = StyleSheet.create({
   },
   // 手札エリア
   handArea: {
-    height: 210,
+    height: 260,
     width: '100%',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingTop: 25,  // 選択時の拡大用スペース
+    overflow: 'visible',
   },
   handContainer: {
     flexDirection: 'row',
     paddingHorizontal: 8,
-    alignItems: 'center',
-    height: 200,
+    alignItems: 'flex-end',
+    paddingBottom: 12,
     minWidth: '100%',
     justifyContent: 'center',
+    overflow: 'visible',
   },
   cardWrapper: {
-    marginHorizontal: 3,
+    marginHorizontal: 4,
+    overflow: 'visible',
   },
   cancelButton: {
     position: 'absolute',
