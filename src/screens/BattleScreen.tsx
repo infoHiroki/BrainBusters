@@ -27,6 +27,7 @@ import {
 } from '../store/runStore';
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
 import { GAME_CONFIG } from '../types/game';
+import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -151,10 +152,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     ]).start();
   };
 
-  // フローティングダメージを追加
+  // フローティングダメージを追加（効果音付き）
   const addFloatingNumber = (value: number, type: 'damage' | 'block' | 'heal', x: number, y: number) => {
     const id = Math.random().toString(36).substr(2, 9);
     setFloatingNumbers(prev => [...prev, { id, value, type, x, y }]);
+
+    // 効果音を再生
+    if (type === 'damage') {
+      playSound('attack');
+    } else if (type === 'block') {
+      playSound('block');
+    } else if (type === 'heal') {
+      playSound('heal');
+    }
   };
 
   // フローティングダメージを削除
@@ -363,6 +373,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setIsProcessing(true);
     setSelectedCardIndex(null);
     setIsSelectingTarget(false);
+
+    // カード使用効果音
+    playSound('cardPlay');
 
     // カード効果を実行
     const result = playCardEffects(
@@ -646,6 +659,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // バトル終了処理
   const handleBattleEnd = (victory: boolean) => {
+    // 勝利/敗北の効果音
+    if (victory) {
+      playVictoryFanfare();
+    } else {
+      playSound('defeat');
+    }
+
     const updatedRunState: RunState = {
       ...currentRunState,
       hp: victory ? hp : 0,
