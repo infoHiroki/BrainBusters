@@ -193,9 +193,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return;
     }
 
+    // 全体攻撃かどうかをチェック
+    const isAllEnemiesAttack = card.effects.some(e => e.target === 'all_enemies');
+
     // 攻撃カードの場合
-    const needsTarget = card.type === 'attack' ||
-      card.effects.some(e => e.target === 'enemy');
+    const needsTarget = (card.type === 'attack' ||
+      card.effects.some(e => e.target === 'enemy')) && !isAllEnemiesAttack;
 
     if (needsTarget) {
       // 生存している敵をカウント
@@ -212,7 +215,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         showMessage('敵を選択してください');
       }
     } else {
-      // 防御・スキルカードは即座に使用
+      // 防御・スキルカード・全体攻撃は即座に使用
       useSelectedCard(index, 0);
     }
   };
