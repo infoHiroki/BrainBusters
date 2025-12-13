@@ -196,9 +196,9 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 
 const styles = StyleSheet.create({
   cardFrame: {
-    width: 130,
-    height: 185,
-    borderRadius: 10,
+    width: 150,
+    height: 215,
+    borderRadius: 12,
     borderWidth: 3,
     backgroundColor: '#1a1a2e',
     shadowOffset: { width: 0, height: 0 },
@@ -213,17 +213,17 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     flex: 1,
-    borderRadius: 7,
+    borderRadius: 9,
     overflow: 'hidden',
   },
   // コストバッジ
   costBadge: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    top: 5,
+    left: 5,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   costText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
@@ -246,11 +246,11 @@ const styles = StyleSheet.create({
   // 強化済みバッジ
   upgradedBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#2ECC71',
     justifyContent: 'center',
     alignItems: 'center',
@@ -265,24 +265,24 @@ const styles = StyleSheet.create({
   },
   upgradedText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   // イラストエリア
   artArea: {
-    height: 75,
+    height: 85,
     justifyContent: 'center',
     alignItems: 'center',
   },
   artPlaceholder: {
-    fontSize: 36,
+    fontSize: 42,
     opacity: 0.9,
   },
   // カード名バナー
   nameBanner: {
-    minHeight: 28,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
+    minHeight: 34,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderTopWidth: 2,
     borderBottomWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
     textShadowColor: '#000',
@@ -302,39 +302,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: '#0a0a1a',
   },
   typeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
   typeText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   rarityStars: {
     flexDirection: 'row',
   },
   rarityText: {
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: -1,
   },
   // 効果エリア
   effectArea: {
     flex: 1,
     backgroundColor: '#16213e',
-    padding: 6,
+    padding: 8,
     justifyContent: 'center',
   },
   effectText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 16,
     fontWeight: '500',
   },
 });

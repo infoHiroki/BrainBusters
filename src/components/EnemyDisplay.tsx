@@ -79,23 +79,23 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </View>
       )}
 
-      {/* 行動予告 */}
+      {/* 行動予告（常に上部に表示） */}
       {!isDead && !isTargeted && (
         <View style={[styles.intentContainer, { borderColor: getIntentColor(), borderWidth: 2 }]}>
           <Text style={styles.intentIcon}>{getIntentIcon()}</Text>
           {enemy.intent.type === 'attack' ? (
             <View style={styles.intentAttack}>
               <Text style={[styles.intentValue, { color: '#e74c3c' }]}>{enemy.intent.value}</Text>
-              <Text style={styles.intentLabel}>ダメージ</Text>
+              <Text style={styles.intentLabel}>攻撃</Text>
             </View>
           ) : enemy.intent.type === 'defend' ? (
             <View style={styles.intentAttack}>
               <Text style={[styles.intentValue, { color: '#3498db' }]}>{enemy.intent.value}</Text>
-              <Text style={styles.intentLabel}>ブロック</Text>
+              <Text style={styles.intentLabel}>防御</Text>
             </View>
           ) : (
             <Text style={styles.intentText}>
-              {getIntentDescription(enemy.intent)}
+              {enemy.intent.type === 'buff' ? '強化' : enemy.intent.type === 'debuff' ? '弱体化' : '?'}
             </Text>
           )}
         </View>
@@ -123,31 +123,36 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           </View>
         )}
 
-        {/* 名前 */}
+        {/* 名前（中央に表示） */}
         <Text style={[styles.enemyName, isDead && styles.deadText]}>
           {enemy.name}
         </Text>
-
-        {/* ブロック */}
-        {enemy.block > 0 && !isDead && (
-          <View style={styles.blockContainer}>
-            <Text style={styles.blockText}>🛡️ {enemy.block}</Text>
-          </View>
-        )}
-
-        {/* ステータス効果 */}
-        {enemy.statuses.length > 0 && !isDead && (
-          <View style={styles.statusContainer}>
-            {enemy.statuses.slice(0, 3).map((status, i) => (
-              <View key={i} style={styles.statusBadge}>
-                <Text style={styles.statusText}>
-                  {getStatusName(status.type)} {status.stacks}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
       </LinearGradient>
+
+      {/* ブロックとステータスを敵の下に別行で表示 */}
+      {!isDead && (enemy.block > 0 || enemy.statuses.length > 0) && (
+        <View style={styles.statusRow}>
+          {enemy.block > 0 && (
+            <View style={styles.blockBadge}>
+              <Text style={styles.blockBadgeText}>🛡️{enemy.block}</Text>
+            </View>
+          )}
+          {enemy.statuses.map((status, i) => (
+            <View key={i} style={[styles.statusBadge, {
+              backgroundColor: ['strength', 'dexterity', 'regeneration'].includes(status.type)
+                ? 'rgba(46, 204, 113, 0.9)'
+                : 'rgba(231, 76, 60, 0.9)'
+            }]}>
+              <Text style={styles.statusBadgeText}>
+                {status.type === 'strength' ? '💪' :
+                 status.type === 'vulnerable' ? '💔' :
+                 status.type === 'weak' ? '😵' :
+                 status.type === 'poison' ? '☠️' : '✨'}{status.stacks}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* HPバー */}
       <View style={styles.hpBarContainer}>
@@ -313,38 +318,37 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#666',
   },
-  blockContainer: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
+  // ブロックとステータスの行
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 4,
+    gap: 4,
+    maxWidth: 140,
+  },
+  blockBadge: {
     backgroundColor: 'rgba(52, 152, 219, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3498db',
   },
-  blockText: {
+  blockBadgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  statusContainer: {
-    position: 'absolute',
-    bottom: 6,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    maxWidth: '100%',
-  },
   statusBadge: {
-    backgroundColor: 'rgba(155, 89, 182, 0.9)',
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 4,
-    margin: 2,
   },
-  statusText: {
+  statusBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   hpBarContainer: {
     width: 140,
