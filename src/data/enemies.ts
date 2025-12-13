@@ -227,7 +227,7 @@ export const enemyTemplates: EnemyTemplate[] = [
     ],
   },
 
-  // === 通常敵 (20-24階) ===
+  // === 通常敵 (20-29階) ===
   {
     id: 19,
     name: '自由意志の幻影',
@@ -266,6 +266,131 @@ export const enemyTemplates: EnemyTemplate[] = [
     ],
   },
 
+  // === 通常敵 (30-39階) ===
+  {
+    id: 22,
+    name: '無限の深淵',
+    maxHp: [110, 130],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'infinity_void', name: '無限の穴', intent: { type: 'attack', value: 40 }, weight: 45 },
+      { id: 'infinity_drain', name: '無限の吸収', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'infinity_wall', name: '果てしなき壁', intent: { type: 'defend', value: 28 }, weight: 25 },
+    ],
+  },
+  {
+    id: 23,
+    name: '相対主義の霧',
+    maxHp: [105, 125],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'relative_strike', name: '相対の一撃', intent: { type: 'attack', value: 36 }, weight: 40 },
+      { id: 'relative_confuse', name: '相対化', intent: { type: 'debuff' }, weight: 35 },
+      { id: 'relative_shield', name: '曖昧な盾', intent: { type: 'defend', value: 24 }, weight: 25 },
+    ],
+  },
+  {
+    id: 24,
+    name: '本質の守護者',
+    maxHp: [115, 135],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'essence_strike', name: '本質の一撃', intent: { type: 'attack', value: 42 }, weight: 45 },
+      { id: 'essence_reveal', name: '本質の顕現', intent: { type: 'buff' }, weight: 30 },
+      { id: 'essence_guard', name: '本質の守り', intent: { type: 'defend', value: 30 }, weight: 25 },
+    ],
+  },
+  {
+    id: 25,
+    name: '存在論の亡霊',
+    maxHp: [120, 140],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'onto_question', name: '存在の問い', intent: { type: 'attack', value: 44 }, weight: 40 },
+      { id: 'onto_negate', name: '存在の否定', intent: { type: 'debuff' }, weight: 35 },
+      { id: 'onto_shield', name: '存在の壁', intent: { type: 'defend', value: 26 }, weight: 25 },
+    ],
+  },
+  {
+    id: 26,
+    name: '因果律の鎖',
+    maxHp: [125, 145],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'causal_bind', name: '因果の束縛', intent: { type: 'attack', value: 38 }, weight: 35 },
+      { id: 'causal_chain', name: '連鎖反応', intent: { type: 'attack', value: 20 }, weight: 30, condition: 'multi_hit_2' },
+      { id: 'causal_block', name: '因果の断絶', intent: { type: 'defend', value: 32 }, weight: 35 },
+    ],
+  },
+
+  // === 通常敵 (40-50階) ===
+  {
+    id: 27,
+    name: '絶対知の化身',
+    maxHp: [135, 155],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'absknow_strike', name: '絶対知の一撃', intent: { type: 'attack', value: 48 }, weight: 45 },
+      { id: 'absknow_insight', name: '洞察', intent: { type: 'buff' }, weight: 30 },
+      { id: 'absknow_wall', name: '知の城壁', intent: { type: 'defend', value: 35 }, weight: 25 },
+    ],
+  },
+  {
+    id: 28,
+    name: '超越論的主観',
+    maxHp: [140, 160],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'trans_judge', name: '超越的判断', intent: { type: 'attack', value: 50 }, weight: 40 },
+      { id: 'trans_category', name: 'カテゴリー適用', intent: { type: 'debuff' }, weight: 35 },
+      { id: 'trans_synth', name: '統覚の統合', intent: { type: 'defend', value: 38 }, weight: 25 },
+    ],
+  },
+  {
+    id: 29,
+    name: '究極の懐疑',
+    maxHp: [145, 165],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'doubt_ultimate', name: '究極の疑い', intent: { type: 'attack', value: 52 }, weight: 45 },
+      { id: 'doubt_strip', name: '確信の剥奪', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'doubt_guard', name: '懐疑の盾', intent: { type: 'defend', value: 36 }, weight: 25 },
+    ],
+  },
+  {
+    id: 30,
+    name: '根源的存在',
+    maxHp: [150, 170],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'root_strike', name: '根源の一撃', intent: { type: 'attack', value: 54 }, weight: 40 },
+      { id: 'root_emerge', name: '湧出', intent: { type: 'buff' }, weight: 25 },
+      { id: 'root_absorb', name: '吸収', intent: { type: 'debuff' }, weight: 20 },
+      { id: 'root_wall', name: '根源の壁', intent: { type: 'defend', value: 40 }, weight: 15 },
+    ],
+  },
+  {
+    id: 31,
+    name: '意味の崩壊',
+    maxHp: [155, 175],
+    isBoss: false,
+    isElite: false,
+    moves: [
+      { id: 'mean_crush', name: '意味の崩壊', intent: { type: 'attack', value: 56 }, weight: 45 },
+      { id: 'mean_void', name: '無意味化', intent: { type: 'debuff' }, weight: 35 },
+      { id: 'mean_shield', name: '意味の残滓', intent: { type: 'defend', value: 42 }, weight: 20 },
+    ],
+  },
+
   // === エリート敵 === ダメージ2倍、HP1.5倍に調整
   {
     id: 101,
@@ -301,6 +426,43 @@ export const enemyTemplates: EnemyTemplate[] = [
       { id: 'uber_smash', name: '力への意志', intent: { type: 'attack', value: 32 }, weight: 50 },  // 2x
       { id: 'uber_overcome', name: '克服', intent: { type: 'buff' }, weight: 35 },
       { id: 'uber_eternal', name: '永劫の構え', intent: { type: 'defend', value: 18 }, weight: 15 },
+    ],
+  },
+  {
+    id: 104,
+    name: 'カントの純粋理性',
+    maxHp: [100, 120],
+    isBoss: false,
+    isElite: true,
+    moves: [
+      { id: 'kant_critique', name: '批判の刃', intent: { type: 'attack', value: 38 }, weight: 45 },
+      { id: 'kant_category', name: 'カテゴリーの束縛', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'kant_apriori', name: 'アプリオリな防御', intent: { type: 'defend', value: 25 }, weight: 25 },
+    ],
+  },
+  {
+    id: 105,
+    name: 'ショーペンハウアーの意志',
+    maxHp: [110, 130],
+    isBoss: false,
+    isElite: true,
+    moves: [
+      { id: 'will_strike', name: '盲目的意志', intent: { type: 'attack', value: 44 }, weight: 50 },
+      { id: 'will_suffer', name: '苦悩の連鎖', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'will_deny', name: '意志の否定', intent: { type: 'defend', value: 30 }, weight: 20 },
+    ],
+  },
+  {
+    id: 106,
+    name: 'スピノザの神',
+    maxHp: [120, 140],
+    isBoss: false,
+    isElite: true,
+    moves: [
+      { id: 'spinoza_nature', name: '自然即神', intent: { type: 'attack', value: 50 }, weight: 40 },
+      { id: 'spinoza_affect', name: '情動の支配', intent: { type: 'debuff' }, weight: 30 },
+      { id: 'spinoza_eternal', name: '永遠の相', intent: { type: 'buff' }, weight: 15 },
+      { id: 'spinoza_substance', name: '実体の壁', intent: { type: 'defend', value: 35 }, weight: 15 },
     ],
   },
 
@@ -435,16 +597,21 @@ export const getEnemyTemplateById = (id: number): EnemyTemplate | undefined => {
 
 // 通常敵を取得（階層別）
 export const getNormalEnemies = (floor: number): EnemyTemplate[] => {
-  if (floor <= 4) {
-    return enemyTemplates.filter(t => t.id >= 1 && t.id <= 5);
-  } else if (floor <= 9) {
+  if (floor <= 9) {
+    // 1-9階: 序盤の敵
     return enemyTemplates.filter(t => t.id >= 1 && t.id <= 10);
-  } else if (floor <= 14) {
-    return enemyTemplates.filter(t => t.id >= 6 && t.id <= 15);
   } else if (floor <= 19) {
-    return enemyTemplates.filter(t => t.id >= 11 && t.id <= 18);
+    // 10-19階: 中盤の敵
+    return enemyTemplates.filter(t => t.id >= 6 && t.id <= 15);
+  } else if (floor <= 29) {
+    // 20-29階: 後半の敵
+    return enemyTemplates.filter(t => t.id >= 11 && t.id <= 21);
+  } else if (floor <= 39) {
+    // 30-39階: 深層の敵
+    return enemyTemplates.filter(t => t.id >= 16 && t.id <= 26);
   } else {
-    return enemyTemplates.filter(t => t.id >= 16 && t.id <= 21);
+    // 40-50階: 最深層の敵
+    return enemyTemplates.filter(t => t.id >= 22 && t.id <= 31);
   }
 };
 
@@ -453,17 +620,17 @@ export const getEliteEnemies = (): EnemyTemplate[] => {
   return enemyTemplates.filter(t => t.isElite);
 };
 
-// ボスを取得（階層別）
+// ボスを取得（階層別）- 10階ごとにボス
 export const getBossForFloor = (floor: number): EnemyTemplate | undefined => {
-  if (floor === 5) {
+  if (floor === 10) {
     return enemyTemplates.find(t => t.id === 201); // 虚無
-  } else if (floor === 10) {
-    return enemyTemplates.find(t => t.id === 202); // 永劫回帰
-  } else if (floor === 15) {
-    return enemyTemplates.find(t => t.id === 203); // 絶対精神
   } else if (floor === 20) {
+    return enemyTemplates.find(t => t.id === 202); // 永劫回帰
+  } else if (floor === 30) {
+    return enemyTemplates.find(t => t.id === 203); // 絶対精神
+  } else if (floor === 40) {
     return enemyTemplates.find(t => t.id === 204); // 存在と時間
-  } else if (floor === 25) {
+  } else if (floor === 50) {
     return enemyTemplates.find(t => t.id === 205); // 世界精神
   }
   return undefined;

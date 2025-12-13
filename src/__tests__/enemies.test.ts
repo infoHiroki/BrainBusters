@@ -50,7 +50,7 @@ describe('敵生成システム', () => {
 
     it('ボスは通常敵より強い', () => {
       const normalEnemy = generateEnemyGroup(1, 'battle')[0];
-      const boss = getBossForFloor(5);
+      const boss = getBossForFloor(10); // 最初のボスは10階
 
       expect(boss!.maxHp).toBeGreaterThan(normalEnemy.maxHp);
     });
