@@ -31,6 +31,10 @@ import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// カードサイズ（通常サイズ：150x215）
+const CARD_WIDTH = 150;
+const CARD_HEIGHT = 215;
+
 // フローティングダメージ表示用のコンポーネント
 interface FloatingNumber {
   id: string;
@@ -95,7 +99,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [enemiesKilledThisBattle, setEnemiesKilledThisBattle] = useState<number>(0);
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
   const [isSelectingTarget, setIsSelectingTarget] = useState(false);
-  const [stockCardUsed, setStockCardUsed] = useState(false);
+  const [usedStockIndices, setUsedStockIndices] = useState<number[]>([]);
   const [currentRunState, setCurrentRunState] = useState<RunState>(runState);
   const [showRelicsPanel, setShowRelicsPanel] = useState(false);
 
@@ -242,10 +246,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setIsSelectingTarget(false);
   };
 
-  // ストックカードを使用
-  const handleUseStockCard = async () => {
-    if (!battleState || isProcessing || turnPhase !== 'player' || stockCardUsed) return;
-    const stockCard = currentRunState.stockCard;
+  // ストックカードを使用（インデックス指定）
+  const handleUseStockCard = async (stockIndex: number) => {
+    if (!battleState || isProcessing || turnPhase !== 'player') return;
+    if (usedStockIndices.includes(stockIndex)) return;
+
+    const stockCard = currentRunState.stockCards[stockIndex];
     if (!stockCard) return;
 
     // 使用可能かチェック
@@ -263,18 +269,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       if (aliveEnemies.length > 1) {
         // 敵が複数の場合は最初の生存敵をターゲットに
         const targetIndex = battleState.enemies.findIndex(e => e.hp > 0);
-        await executeStockCard(stockCard, targetIndex);
+        await executeStockCard(stockCard, targetIndex, stockIndex);
       } else {
         const targetIndex = battleState.enemies.findIndex(e => e.hp > 0);
-        await executeStockCard(stockCard, targetIndex);
+        await executeStockCard(stockCard, targetIndex, stockIndex);
       }
     } else {
-      await executeStockCard(stockCard, 0);
+      await executeStockCard(stockCard, 0, stockIndex);
     }
   };
 
-  // ストックカードを実行
-  const executeStockCard = async (card: Card, enemyIndex: number) => {
+  // ストックカードを実行（インデックス指定）
+  const executeStockCard = async (card: Card, enemyIndex: number, stockIndex: number) => {
     if (!battleState) return;
 
     setIsProcessing(true);
@@ -350,9 +356,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     }
 
     // ストックカードを使用済みにする（永続保存）
-    const newRunState = await useStockCard(currentRunState);
+    const newRunState = await useStockCard(currentRunState, stockIndex);
     setCurrentRunState(newRunState);
-    setStockCardUsed(true);
+    const newUsedStockIndices = [...usedStockIndices, stockIndex];
+    setUsedStockIndices(newUsedStockIndices);
 
     // 勝利判定
     if (isBattleWon({ ...battleState, enemies: result.enemies })) {
@@ -364,6 +371,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     }
 
     setIsProcessing(false);
+
+    // 自動ターン終了チェック（ストックカード使用後）
+    const newEnergy = energy - card.cost + result.energyGained;
+    checkAutoEndTurn(newEnergy, hand, result.enemies, newUsedStockIndices);
   };
 
   // カードを使用
@@ -498,24 +509,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   };
 
   // 自動ターン終了チェック
-  const checkAutoEndTurn = (currentEnergy: number, currentHand: CardInstance[], enemies: Enemy[]) => {
-    // 手札が0枚なら即座に終了
-    if (currentHand.length === 0) {
-      setTimeout(() => {
-        handleEndTurn();
-      }, 800);
-      return;
-    }
-
-    // 打てるカードがあるかチェック（0コストカードも含めて正確にチェック）
-    const canPlayAny = currentHand.some(cardInst => {
+  const checkAutoEndTurn = (
+    currentEnergy: number,
+    currentHand: CardInstance[],
+    enemies: Enemy[],
+    currentUsedStockIndices: number[] = usedStockIndices
+  ) => {
+    // 手札から打てるカードがあるかチェック
+    const canPlayHandCard = currentHand.some(cardInst => {
       const card = cardInst.card;
-      // エネルギーが足りるか AND カードが使用可能か
       return card.cost <= currentEnergy && canPlayCard(card, currentEnergy, enemies);
     });
 
-    if (!canPlayAny) {
-      // 0.8秒後に自動でターン終了
+    // ストックから打てるカードがあるかチェック
+    const canPlayStockCard = currentRunState.stockCards.some((stockCard, index) => {
+      if (currentUsedStockIndices.includes(index)) return false;
+      return stockCard.cost <= currentEnergy && canPlayCard(stockCard, currentEnergy, enemies);
+    });
+
+    // 手札もストックも打てるカードがなければターン終了
+    if (!canPlayHandCard && !canPlayStockCard) {
       setTimeout(() => {
         handleEndTurn();
       }, 800);
@@ -1014,23 +1027,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         />
       ))}
 
-      {/* アクションバー */}
+      {/* アクションバー（ターンエンドボタン） */}
       <View style={styles.actionBar}>
-        {/* ストックカードボタン */}
-        {currentRunState.stockCard && !stockCardUsed && (
-          <TouchableOpacity
-            style={[
-              styles.stockCardButton,
-              (turnPhase !== 'player' || isProcessing || !canPlayCard(currentRunState.stockCard, energy, battleState.enemies)) && styles.buttonDisabled,
-            ]}
-            onPress={handleUseStockCard}
-            disabled={turnPhase !== 'player' || isProcessing || !canPlayCard(currentRunState.stockCard, energy, battleState.enemies)}
-          >
-            <Text style={styles.stockCardLabel}>📦 ストック</Text>
-            <Text style={styles.stockCardName}>{currentRunState.stockCard.name}</Text>
-            <Text style={styles.stockCardCost}>⚡{currentRunState.stockCard.cost}</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity
           style={[
             styles.endTurnButton,
@@ -1045,7 +1043,34 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 手札エリア */}
+      {/* ストックカードエリア（固定高さ） */}
+      {currentRunState.stockCards.length > 0 && currentRunState.stockCards.length > usedStockIndices.length && (
+        <View style={styles.stockArea}>
+          <Text style={styles.stockAreaLabel}>📦 ストック ({currentRunState.stockCards.length - usedStockIndices.length}/5)</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cardScrollContent}
+          >
+            {currentRunState.stockCards.map((stockCard, index) => {
+              if (usedStockIndices.includes(index)) return null;
+              const canPlay = canPlayCard(stockCard, energy, battleState.enemies);
+              return (
+                <BattleCard
+                  key={`stock-${index}`}
+                  card={stockCard}
+                  onPress={() => handleUseStockCard(index)}
+                  disabled={!canPlay || turnPhase !== 'player' || isProcessing}
+                  selected={false}
+                  playerStatuses={battleState.playerStatuses}
+                />
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 手札エリア（固定高さ） */}
       <View style={styles.handArea}>
         {isSelectingTarget && (
           <TouchableOpacity style={styles.cancelButton} onPress={cancelCardSelection}>
@@ -1054,20 +1079,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         )}
         <ScrollView
           horizontal
-          style={{ height: 220, overflow: 'visible' }}
-          contentContainerStyle={styles.handContainer}
-          showsHorizontalScrollIndicator={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardScrollContent}
         >
           {hand.map((cardInstance, index) => (
-            <View key={cardInstance.instanceId} style={styles.cardWrapper}>
-              <BattleCard
-                card={cardInstance.card}
-                onPress={() => handleCardSelect(index)}
-                disabled={!canPlayCard(cardInstance.card, energy, battleState.enemies) || turnPhase !== 'player' || isProcessing}
-                selected={selectedCardIndex === index}
-                playerStatuses={battleState.playerStatuses}
-              />
-            </View>
+            <BattleCard
+              key={cardInstance.instanceId}
+              card={cardInstance.card}
+              onPress={() => handleCardSelect(index)}
+              disabled={!canPlayCard(cardInstance.card, energy, battleState.enemies) || turnPhase !== 'player' || isProcessing}
+              selected={selectedCardIndex === index}
+              playerStatuses={battleState.playerStatuses}
+            />
           ))}
         </ScrollView>
       </View>
@@ -1380,6 +1403,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 6,
   },
+  // ストックカードエリア（固定高さでズレ防止）
+  stockArea: {
+    width: '100%',
+    height: 253, // ラベル22 + カード高さ215 + padding 16
+    paddingVertical: 8,
+  },
+  stockAreaLabel: {
+    color: '#9B89F5',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
   // アクションバー
   actionBar: {
     width: '100%',
@@ -1389,32 +1425,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     gap: 12,
-  },
-  stockCardButton: {
-    backgroundColor: 'rgba(108, 92, 231, 0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#6C5CE7',
-    alignItems: 'center',
-    minWidth: 100,
-  },
-  stockCardLabel: {
-    color: '#9B89F5',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  stockCardName: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  stockCardCost: {
-    color: '#FFD700',
-    fontSize: 11,
-    marginTop: 2,
   },
   endTurnButton: {
     backgroundColor: '#2d5a27',
@@ -1432,27 +1442,20 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-  // 手札エリア
+  // 手札エリア（固定高さでズレ防止）
   handArea: {
-    height: 260,
     width: '100%',
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingTop: 25,  // 選択時の拡大用スペース
-    overflow: 'visible',
+    height: 231, // カード高さ215 + padding 16
+    paddingVertical: 8,
   },
-  handContainer: {
+  // カードスクロールコンテナ（中央揃え + スクロール対応）
+  cardScrollContent: {
+    flexGrow: 1,          // 小さい時は拡張
+    justifyContent: 'center', // 中央揃え
+    alignItems: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    alignItems: 'flex-end',
-    paddingBottom: 12,
-    minWidth: '100%',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  cardWrapper: {
-    marginHorizontal: 4,
-    overflow: 'visible',
+    paddingHorizontal: 12,
+    gap: 8,
   },
   cancelButton: {
     position: 'absolute',
