@@ -19,7 +19,10 @@ const concepts: Concept[] = conceptsData as Concept[];
 
 // 回復系カードかどうかを判定
 const isHealingCard = (name: string, category: string): boolean => {
-  const healKeywords = ['治', '癒', '回復', '生命', '命', '愛', '希望', '光', '救', '再生', '復活', '蘇', '健康', '活力'];
+  const healKeywords = [
+    '治', '癒', '回復', '生命', '愛', '希望', '光', '救', '再生', '復活', '蘇', '健康', '活力',
+    '安心', '幸福', '慈悲', '平穏', '安らぎ', '休息', '祈り', '恵み', '感謝', '満足', '喜び'
+  ];
   return healKeywords.some(kw => name.includes(kw));
 };
 
@@ -403,8 +406,8 @@ export const generateRewardCards = (floor: number): Card[] => {
     }
   };
 
-  // 30%の確率で回復カードを1枚含める
-  const includeHealCard = Math.random() < 0.3;
+  // 50%の確率で回復カードを1枚含める
+  const includeHealCard = Math.random() < 0.5;
   if (includeHealCard) {
     const healingCards = getHealingCards().filter(c => !usedIds.has(c.id));
     if (healingCards.length > 0) {

@@ -431,12 +431,16 @@ export const isBattleLost = (hp: number): boolean => {
 };
 
 // 次の階へ進む
-export const advanceFloor = async (runState: RunState): Promise<RunState> => {
-  const currentNode = runState.map.find(n => n.id === runState.currentNodeId);
-  if (!currentNode) return runState;
+export const advanceFloor = async (_runState: RunState): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
+  const currentNode = latestState.map.find(n => n.id === latestState.currentNodeId);
+  if (!currentNode) return latestState;
 
   // 現在のノードを完了にする
-  const updatedMap = runState.map.map(n =>
+  const updatedMap = latestState.map.map(n =>
     n.id === currentNode.id ? { ...n, completed: true } : n
   );
 
@@ -444,8 +448,8 @@ export const advanceFloor = async (runState: RunState): Promise<RunState> => {
   const nextNodeId = currentNode.connections[0];
 
   const newState: RunState = {
-    ...runState,
-    floor: runState.floor + 1,
+    ...latestState,
+    floor: latestState.floor + 1,
     map: updatedMap,
     currentNodeId: nextNodeId || null,
   };
@@ -456,12 +460,16 @@ export const advanceFloor = async (runState: RunState): Promise<RunState> => {
 
 // カードを追加
 export const addCardToDeck = async (
-  runState: RunState,
+  _runState: RunState,
   card: Card
 ): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
   const newState: RunState = {
-    ...runState,
-    deck: [...runState.deck, createCardInstance(card)],
+    ...latestState,
+    deck: [...latestState.deck, createCardInstance(card)],
   };
   await saveRunState(newState);
   return newState;
@@ -482,12 +490,16 @@ export const removeCardFromDeck = async (
 
 // レリックを追加
 export const addRelic = async (
-  runState: RunState,
+  _runState: RunState,
   relic: Relic
 ): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
   // レリックの即時効果を適用
-  let newMaxHp = runState.maxHp;
-  let newMaxEnergy = runState.maxEnergy;
+  let newMaxHp = latestState.maxHp;
+  let newMaxEnergy = latestState.maxEnergy;
 
   for (const effect of relic.effects) {
     if (effect.condition === 'max_hp_increase') {
@@ -499,10 +511,10 @@ export const addRelic = async (
   }
 
   const newState: RunState = {
-    ...runState,
-    relics: [...runState.relics, relic],
+    ...latestState,
+    relics: [...latestState.relics, relic],
     maxHp: newMaxHp,
-    hp: Math.min(runState.hp + (newMaxHp - runState.maxHp), newMaxHp),
+    hp: Math.min(latestState.hp + (newMaxHp - latestState.maxHp), newMaxHp),
     maxEnergy: newMaxEnergy,
   };
   await saveRunState(newState);
@@ -511,12 +523,16 @@ export const addRelic = async (
 
 // ゴールドを追加/減少
 export const updateGold = async (
-  runState: RunState,
+  _runState: RunState,
   amount: number
 ): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
   const newState: RunState = {
-    ...runState,
-    gold: Math.max(0, runState.gold + amount),
+    ...latestState,
+    gold: Math.max(0, latestState.gold + amount),
   };
   await saveRunState(newState);
   return newState;
@@ -524,12 +540,16 @@ export const updateGold = async (
 
 // HPを回復
 export const healPlayer = async (
-  runState: RunState,
+  _runState: RunState,
   amount: number
 ): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
   const newState: RunState = {
-    ...runState,
-    hp: Math.min(runState.maxHp, runState.hp + amount),
+    ...latestState,
+    hp: Math.min(latestState.maxHp, latestState.hp + amount),
   };
   await saveRunState(newState);
   return newState;
