@@ -14,11 +14,15 @@ import { GameStats } from '../store/statsStore';
 interface HomeScreenProps {
   stats: GameStats | null;
   onStartRun: () => void;
+  onOpenHelp: () => void;
+  onOpenSettings: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   stats,
   onStartRun,
+  onOpenHelp,
+  onOpenSettings,
 }) => {
   return (
     <View style={styles.container}>
@@ -71,6 +75,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <Text style={styles.hintText}>
           15階層のダンジョンに挑戦しよう
         </Text>
+      </View>
+
+      {/* メニューボタン */}
+      <View style={styles.menuContainer}>
+        <TouchableOpacity style={styles.menuButton} onPress={onOpenHelp}>
+          <Text style={styles.menuButtonText}>ルール説明</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuButton} onPress={onOpenSettings}>
+          <Text style={styles.menuButtonText}>設定</Text>
+        </TouchableOpacity>
       </View>
 
       {/* バージョン */}
@@ -151,6 +165,23 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
     marginTop: 16,
+  },
+  menuContainer: {
+    flexDirection: 'row',
+    marginTop: 40,
+    gap: 20,
+  },
+  menuButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  menuButtonText: {
+    color: '#aaa',
+    fontSize: 14,
   },
   versionText: {
     position: 'absolute',

@@ -17,8 +17,19 @@ interface Concept {
 
 const concepts: Concept[] = conceptsData as Concept[];
 
+// 回復系カードかどうかを判定
+const isHealingCard = (name: string, category: string): boolean => {
+  const healKeywords = ['治', '癒', '回復', '生命', '命', '愛', '希望', '光', '救', '再生', '復活', '蘇', '健康', '活力'];
+  return healKeywords.some(kw => name.includes(kw));
+};
+
 // カテゴリからカードタイプを決定
 const getCategoryType = (category: string, name: string): CardType => {
+  // 回復系は先にチェック（スキルとして扱う）
+  if (isHealingCard(name, category)) {
+    return 'skill';
+  }
+
   // 攻撃系カテゴリ
   const attackCategories = ['action', 'emotion'];
   const attackKeywords = ['怒り', '破壊', '攻撃', '力', '戦', '殺', '死', '滅'];
@@ -82,9 +93,30 @@ const calculateEffectValue = (basePower: number, type: CardType): number => {
 };
 
 // カードタイプに応じた効果を生成
-const generateEffects = (basePower: number, type: CardType, rarity: number): CardEffect[] => {
+const generateEffects = (basePower: number, type: CardType, rarity: number, name: string = '', category: string = ''): CardEffect[] => {
   const value = calculateEffectValue(basePower, type);
   const effects: CardEffect[] = [];
+
+  // 回復系カードの場合は回復効果を生成
+  if (isHealingCard(name, category)) {
+    const healValue = Math.floor(value * 0.8); // 回復量はダメージより若干低め
+    effects.push({
+      type: 'heal',
+      value: Math.max(3, healValue),
+      target: 'self',
+    });
+    // 高レアは追加で再生バフ
+    if (rarity >= 4) {
+      effects.push({
+        type: 'buff',
+        value: 2,
+        target: 'self',
+        statusType: 'regeneration',
+        statusDuration: 2,
+      });
+    }
+    return effects;
+  }
 
   switch (type) {
     case 'attack':
@@ -235,7 +267,7 @@ const getStatusName = (statusType: string): string => {
 const convertConceptToCard = (concept: Concept): Card => {
   const type = getCategoryType(concept.category, concept.name);
   const cost = calculateCost(concept.basePower, type);
-  const effects = generateEffects(concept.basePower, type, concept.rarity);
+  const effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category);
   const description = generateCardDescription(effects, type);
 
   return {
