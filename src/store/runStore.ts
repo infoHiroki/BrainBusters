@@ -30,7 +30,7 @@ const createCardInstance = (card: Card): CardInstance => ({
 });
 
 // マップを生成（シンプルな一本道）
-// 休憩所は削除、ボス撃破時に回復
+// 休憩所は削除、戦闘勝利時にHP全回復
 const generateMap = (): MapNode[] => {
   const nodes: MapNode[] = [];
 
