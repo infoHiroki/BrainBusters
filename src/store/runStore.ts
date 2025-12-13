@@ -83,7 +83,7 @@ export const startNewRun = async (): Promise<RunState> => {
     currentNodeId: 'floor_1',
     seed: Math.floor(Math.random() * 1000000),
     startedAt: Date.now(),
-    stockCard: null,  // ストックカードは最初は空
+    stockCards: [],  // ストックカードは最初は空（最大5枚）
   };
 
   await saveRunState(runState);
@@ -627,31 +627,48 @@ export const upgradeCardInDeck = async (
 };
 
 // ストックカードを設定
-export const setStockCard = async (
+export const addStockCard = async (
   _runState: RunState,
   card: Card
 ): Promise<RunState> => {
   const latestState = await loadRunState();
   if (!latestState) return _runState;
 
+  // 最大5枚まで
+  if (latestState.stockCards.length >= GAME_CONFIG.MAX_STOCK_CARDS) {
+    console.log('ストックが満杯です');
+    return latestState;
+  }
+
   const newState: RunState = {
     ...latestState,
-    stockCard: card,
+    stockCards: [...latestState.stockCards, card],
   };
   await saveRunState(newState);
   return newState;
 };
 
-// ストックカードを使用（クリア）
+// 後方互換性のためのエイリアス
+export const setStockCard = addStockCard;
+
+// ストックカードを使用（インデックス指定で削除）
 export const useStockCard = async (
-  _runState: RunState
+  _runState: RunState,
+  index: number = 0
 ): Promise<RunState> => {
   const latestState = await loadRunState();
   if (!latestState) return _runState;
 
+  if (index < 0 || index >= latestState.stockCards.length) {
+    return latestState;
+  }
+
+  const newStockCards = [...latestState.stockCards];
+  newStockCards.splice(index, 1);
+
   const newState: RunState = {
     ...latestState,
-    stockCard: null,
+    stockCards: newStockCards,
   };
   await saveRunState(newState);
   return newState;

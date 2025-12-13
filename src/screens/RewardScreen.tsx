@@ -154,20 +154,16 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
     onSelectRelic(relicReward);
   };
 
+  const canProceed = goldTaken;
+  const stockIsFull = runState.stockCards.length >= 5;
+
   // 「次の階へ進む」ボタン押下時にカードを確定
   const handleProceed = async () => {
-    if (selectedCard) {
-      if (cardAction === 'stock') {
-        await onSetStockCard(selectedCard); // ストックに設定
-      } else {
-        await onSelectCard(selectedCard); // デッキに追加
-      }
+    if (selectedCard && !stockIsFull) {
+      await onSetStockCard(selectedCard); // ストックに追加
     }
     onSkip();
   };
-
-  const canProceed = goldTaken;
-  const hasStockCard = runState.stockCard !== null;
 
   return (
     <View style={styles.container}>
@@ -251,29 +247,10 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
           {selectedCard && (
             <View style={styles.cardActionContainer}>
               <Text style={styles.selectedMessage}>「{selectedCard.name}」を選択中</Text>
-              <View style={styles.actionToggle}>
-                <TouchableOpacity
-                  style={[styles.actionButton, cardAction === 'stock' && styles.actionButtonActive]}
-                  onPress={() => setCardAction('stock')}
-                >
-                  <Text style={[styles.actionButtonText, cardAction === 'stock' && styles.actionButtonTextActive]}>
-                    📦 ストックに設定
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, cardAction === 'deck' && styles.actionButtonActive]}
-                  onPress={() => setCardAction('deck')}
-                >
-                  <Text style={[styles.actionButtonText, cardAction === 'deck' && styles.actionButtonTextActive]}>
-                    🃏 デッキに追加
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {cardAction === 'stock' && hasStockCard && (
-                <Text style={styles.stockWarning}>⚠️ 現在のストック「{runState.stockCard?.name}」は上書きされます</Text>
-              )}
-              {cardAction === 'stock' && (
-                <Text style={styles.stockInfo}>ストックカードは戦闘中いつでも使用可能！</Text>
+              {stockIsFull ? (
+                <Text style={styles.stockWarning}>⚠️ ストックが満杯です（5枚）</Text>
+              ) : (
+                <Text style={styles.stockInfo}>📦 ストック: {runState.stockCards.length}/5 - 戦闘中いつでも使用可能！</Text>
               )}
             </View>
           )}
@@ -311,8 +288,8 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {runState.floor >= 50 ? 'クリア！' : selectedCard
-                ? (cardAction === 'stock' ? `${selectedCard.name}をストック` : `${selectedCard.name}をデッキに追加`)
+              {runState.floor >= 50 ? 'クリア！' : selectedCard && !stockIsFull
+                ? `📦 ${selectedCard.name}をストック`
                 : '次の階へ進む'}
             </Text>
           </LinearGradient>
@@ -517,6 +494,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(108, 92, 231, 0.3)',
     borderColor: '#6C5CE7',
   },
+  actionButtonDisabled: {
+    opacity: 0.4,
+    borderColor: '#444',
+  },
   actionButtonText: {
     color: '#888',
     fontSize: 14,
@@ -524,6 +505,9 @@ const styles = StyleSheet.create({
   },
   actionButtonTextActive: {
     color: '#fff',
+  },
+  actionButtonTextDisabled: {
+    color: '#555',
   },
   stockWarning: {
     color: '#F59E0B',
