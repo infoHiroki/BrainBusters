@@ -34,10 +34,10 @@ const createCardInstance = (card: Card): CardInstance => ({
 const generateMap = (): MapNode[] => {
   const nodes: MapNode[] = [];
 
-  // エリート階: 2, 4, 7, 9, 12, 14, 17, 19, 22, 24
-  const eliteFloors = [2, 4, 7, 9, 12, 14, 17, 19, 22, 24];
-  // ショップ階（休憩所は廃止）: 3, 6, 8, 11, 13, 16, 18, 21, 23
-  const shopFloors = [3, 6, 8, 11, 13, 16, 18, 21, 23];
+  // エリート階（10階ごとのボス前後に配置）
+  const eliteFloors = [2, 4, 7, 9, 12, 14, 17, 19, 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47, 49];
+  // ショップ階（休憩所は廃止、各エリア中盤に配置）
+  const shopFloors = [3, 6, 8, 11, 13, 16, 18, 21, 23, 26, 28, 31, 33, 36, 38, 41, 43, 46, 48];
 
   for (let floor = 1; floor <= GAME_CONFIG.MAX_FLOOR; floor++) {
     let type: MapNode['type'];

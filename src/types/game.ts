@@ -199,8 +199,8 @@ export interface MetaData {
 
 // ゲーム設定
 export const GAME_CONFIG = {
-  MAX_FLOOR: 25,  // ゲームを長く
-  BOSS_FLOORS: [5, 10, 15, 20, 25],  // ボス5体
+  MAX_FLOOR: 50,  // 50階ダンジョン
+  BOSS_FLOORS: [10, 20, 30, 40, 50],  // ボス5体（10階ごと）
   STARTING_HP: 60,
   STARTING_ENERGY: 5,  // 選択肢を増やすため増加
   STARTING_HAND_SIZE: 6,  // 手札も増加
