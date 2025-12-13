@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Enemy } from '../types/game';
-import { getIntentDescription, getStatusName } from '../utils/cardEffects';
 
 interface EnemyDisplayProps {
   enemy: Enemy;
@@ -31,36 +30,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const hpPercentage = (enemy.hp / enemy.maxHp) * 100;
   const isDead = enemy.hp <= 0;
 
-  const getIntentIcon = () => {
-    switch (enemy.intent.type) {
-      case 'attack':
-        return '⚔️';
-      case 'defend':
-        return '🛡️';
-      case 'buff':
-        return '⬆️';
-      case 'debuff':
-        return '⬇️';
-      default:
-        return '❓';
-    }
-  };
-
-  const getIntentColor = (): string => {
-    switch (enemy.intent.type) {
-      case 'attack':
-        return '#e74c3c';
-      case 'defend':
-        return '#3498db';
-      case 'buff':
-        return '#27ae60';
-      case 'debuff':
-        return '#9b59b6';
-      default:
-        return '#95a5a6';
-    }
-  };
-
   const getHpBarColor = (): [string, string] => {
     if (hpPercentage > 60) return ['#27ae60', '#2ecc71'];
     if (hpPercentage > 30) return ['#f39c12', '#f1c40f'];
@@ -76,28 +45,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {isTargeted && !isDead && (
         <View style={styles.targetIndicator}>
           <Text style={styles.targetText}>▼ タップで攻撃</Text>
-        </View>
-      )}
-
-      {/* 行動予告（常に上部に表示） */}
-      {!isDead && !isTargeted && (
-        <View style={[styles.intentContainer, { borderColor: getIntentColor(), borderWidth: 2 }]}>
-          <Text style={styles.intentIcon}>{getIntentIcon()}</Text>
-          {enemy.intent.type === 'attack' ? (
-            <View style={styles.intentAttack}>
-              <Text style={[styles.intentValue, { color: '#e74c3c' }]}>{enemy.intent.value}</Text>
-              <Text style={styles.intentLabel}>攻撃</Text>
-            </View>
-          ) : enemy.intent.type === 'defend' ? (
-            <View style={styles.intentAttack}>
-              <Text style={[styles.intentValue, { color: '#3498db' }]}>{enemy.intent.value}</Text>
-              <Text style={styles.intentLabel}>防御</Text>
-            </View>
-          ) : (
-            <Text style={styles.intentText}>
-              {enemy.intent.type === 'buff' ? '強化' : enemy.intent.type === 'debuff' ? '弱体化' : '?'}
-            </Text>
-          )}
         </View>
       )}
 
@@ -231,37 +178,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  intentContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  intentIcon: {
-    fontSize: 22,
-    marginRight: 8,
-  },
-  intentText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  intentAttack: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  intentValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  intentLabel: {
-    color: '#ccc',
-    fontSize: 12,
-    marginLeft: 4,
   },
   enemyBody: {
     width: 140,

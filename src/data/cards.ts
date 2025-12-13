@@ -1,7 +1,7 @@
 // カードデータ変換
 // 既存の500枚の概念カードをバトル用カードに変換
 
-import { Card, CardType, CardEffect } from '../types/game';
+import { Card, CardType, CardEffect, StatusType } from '../types/game';
 import conceptsData from './concepts.json';
 
 // 既存の概念型
@@ -79,44 +79,44 @@ const getCardVariant = (id: number): number => {
   return id % 10;
 };
 
-// basePowerからコストを計算（バリアントで変化）
+// basePowerからコストを計算（コスト0を減らし、1-2をメインに）
 const calculateCost = (basePower: number, type: CardType, name: string = '', category: string = '', id: number = 0): number => {
   const variant = getCardVariant(id);
 
-  // 回復カードは強力なのでコスト高め、ただしバリアントで変化
+  // 回復カードは強力なのでコスト高め
   if (isHealingCard(name, category)) {
-    if (variant < 3) return 1; // 30%: 低コスト・低効果
-    if (variant < 7) return 2; // 40%: 中コスト
-    return 3; // 30%: 高コスト・高効果
+    if (variant < 2) return 1; // 20%: 低コスト・低効果
+    if (variant < 6) return 2; // 40%: 中コスト
+    return 3; // 40%: 高コスト・高効果
   }
 
-  // スキルカード
+  // スキルカード（コスト0を減らす）
   if (type === 'skill') {
-    if (variant < 4) return 0; // 40%: 無料
-    if (variant < 8) return 1; // 40%: 低コスト
-    return 2; // 20%: 高コスト・高効果
+    if (variant < 2) return 0; // 20%: 無料
+    if (variant < 6) return 1; // 40%: 低コスト
+    return 2; // 40%: 高コスト・高効果
   }
 
-  // 攻撃・防御カード - basePowerとバリアントの組み合わせ
-  if (variant < 2) return 0; // 20%: 無料（弱い）
-  if (variant < 5) return 1; // 30%: 低コスト
-  if (variant < 8) return 2; // 30%: 中コスト
-  return 3; // 20%: 高コスト・強力
+  // 攻撃・防御カード（コスト0を大幅に減らす）
+  if (variant < 1) return 0; // 10%: 無料（弱い）
+  if (variant < 4) return 1; // 30%: 低コスト
+  if (variant < 7) return 2; // 30%: 中コスト
+  return 3; // 30%: 高コスト・強力
 };
 
-// コストに応じた効果値を計算（大きな差を持たせる）
+// コストに応じた効果値を計算（数値を全体的に上げる）
 const calculateEffectValue = (basePower: number, type: CardType, cost: number, id: number = 0): number => {
   const variant = getCardVariant(id);
 
-  // コストに応じた基本値（大きな差）
+  // コストに応じた基本値（より高い数値）
   const baseByCost: Record<number, [number, number]> = {
-    0: [4, 8],    // コスト0: 4-8
-    1: [8, 14],   // コスト1: 8-14
-    2: [14, 22],  // コスト2: 14-22
-    3: [22, 35],  // コスト3: 22-35
+    0: [6, 10],    // コスト0: 6-10
+    1: [12, 18],   // コスト1: 12-18
+    2: [20, 28],   // コスト2: 20-28
+    3: [30, 45],   // コスト3: 30-45
   };
 
-  const [min, max] = baseByCost[cost] || [8, 14];
+  const [min, max] = baseByCost[cost] || [12, 18];
 
   // バリアントで範囲内の値を決定
   const range = max - min;
@@ -125,16 +125,558 @@ const calculateEffectValue = (basePower: number, type: CardType, cost: number, i
   return value;
 };
 
-// カードタイプに応じた効果を生成（カードIDで特殊効果を決定）
+// カテゴリ別効果テンプレート定義
+// 各カテゴリに特色ある効果パターンを持たせる
+interface EffectTemplate {
+  type: CardEffect['type'];
+  valueMultiplier: number; // 基本値に対する乗数
+  target: CardEffect['target'];
+  statusType?: StatusType;
+  statusDuration?: number;
+  extraValue?: number; // 固定値追加
+}
+
+interface CategoryTemplate {
+  attackPatterns: EffectTemplate[][];
+  defensePatterns: EffectTemplate[][];
+  skillPatterns: EffectTemplate[][];
+}
+
+// カテゴリ別テンプレート定義
+const categoryTemplates: Record<string, CategoryTemplate> = {
+  // 感情: ネガティブ→高火力攻撃/デバフ、ポジティブ→回復/バフ
+  emotion: {
+    attackPatterns: [
+      // 怒り・破壊系: 高火力単体
+      [{ type: 'damage', valueMultiplier: 1.3, target: 'enemy' }],
+      // 恐怖系: ダメージ + 弱体化
+      [
+        { type: 'damage', valueMultiplier: 0.9, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
+      ],
+      // 悲しみ系: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.95, target: 'all_enemies' }],
+      // 絶望系: 大ダメージ + 自傷（脆弱）
+      [
+        { type: 'damage', valueMultiplier: 1.5, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'self', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
+      ],
+    ],
+    defensePatterns: [
+      // 希望系: ブロック + 再生
+      [
+        { type: 'block', valueMultiplier: 0.7, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+      ],
+      // 愛系: ブロック + 回復
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'heal', valueMultiplier: 0.3, target: 'self' },
+      ],
+      // 安心系: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.1, target: 'self' }],
+    ],
+    skillPatterns: [
+      // 喜び系: ドロー + エネルギー
+      [
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 平穏系: 回復
+      [{ type: 'heal', valueMultiplier: 1.2, target: 'self' }],
+    ],
+  },
+
+  // 行動: 連撃、追加効果、機動力
+  action: {
+    attackPatterns: [
+      // 連撃系: 2回攻撃
+      [
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
+        { type: 'damage', valueMultiplier: 0.5, target: 'enemy' },
+      ],
+      // 突進系: ダメージ + 敵弱体
+      [
+        { type: 'damage', valueMultiplier: 0.9, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 1, extraValue: 1 },
+      ],
+      // 全力攻撃: 高ダメージ
+      [{ type: 'damage', valueMultiplier: 1.2, target: 'enemy' }],
+      // 乱撃: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.9, target: 'all_enemies' }],
+    ],
+    defensePatterns: [
+      // 回避系: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // カウンター: ブロック + 反撃
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'damage', valueMultiplier: 0.4, target: 'enemy' },
+      ],
+      // 構え: ブロック + 筋力
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 1 },
+      ],
+    ],
+    skillPatterns: [
+      // 準備: 筋力バフ
+      [{ type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 3 }],
+      // 加速: エネルギー + ドロー
+      [
+        { type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+    ],
+  },
+
+  // 哲学: 知的、複合効果、ドロー系
+  philosophy: {
+    attackPatterns: [
+      // 論理的攻撃: ダメージ + ドロー
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 真理: 高威力
+      [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
+      // 啓蒙: ダメージ + 敵脆弱
+      [
+        { type: 'damage', valueMultiplier: 0.85, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+      ],
+    ],
+    defensePatterns: [
+      // 思索: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+      ],
+      // 冷静: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+      // 洞察: ブロック + 敏捷
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 熟考: 大量ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+      // 悟り: 筋力 + 敏捷
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 3, extraValue: 2 },
+      ],
+    ],
+  },
+
+  // 抽象概念: 特殊効果、エネルギー操作
+  abstract: {
+    attackPatterns: [
+      // 無: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
+      // 因果: ダメージ + デバフ
+      [
+        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+      ],
+      // 存在: 高威力単体
+      [{ type: 'damage', valueMultiplier: 1.15, target: 'enemy' }],
+    ],
+    defensePatterns: [
+      // 静寂: 高ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.7, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 永遠: ブロック + 再生
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 3, extraValue: 3 },
+      ],
+    ],
+    skillPatterns: [
+      // 時間: エネルギー大獲得
+      [{ type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+      // 空間: ドロー + ブロック
+      [
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'block', valueMultiplier: 0.4, target: 'self' },
+      ],
+      // 無限: バフ全部
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 1 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 3, extraValue: 1 },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+    ],
+  },
+
+  // 神話: 強力だがリスクあり、ハイリターン
+  mythology: {
+    attackPatterns: [
+      // 神の一撃: 超高威力
+      [{ type: 'damage', valueMultiplier: 1.6, target: 'enemy' }],
+      // 天罰: 全体大ダメージ
+      [{ type: 'damage', valueMultiplier: 0.9, target: 'all_enemies' }],
+      // 神話の力: ダメージ + 筋力
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 3 },
+      ],
+    ],
+    defensePatterns: [
+      // 神盾: 超高ブロック
+      [{ type: 'block', valueMultiplier: 1.4, target: 'self' }],
+      // 加護: ブロック + 再生
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 3, extraValue: 4 },
+      ],
+    ],
+    skillPatterns: [
+      // 啓示: 大量ドロー + エネルギー
+      [
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 3 },
+        { type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 神威: 全バフ
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 3, extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+  },
+
+  // 心理学: デバフ特化、精神操作
+  psychology: {
+    attackPatterns: [
+      // 心理攻撃: ダメージ + 弱体
+      [
+        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 2 },
+      ],
+      // 恐怖誘発: ダメージ + 脆弱
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+      ],
+      // 混乱: 全体攻撃 + デバフ
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'all_enemies' },
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 1 },
+      ],
+    ],
+    defensePatterns: [
+      // 冷静さ: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.7, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 精神集中: ブロック + 敏捷
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 分析: ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+      // 催眠: 全体デバフ
+      [
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 2 },
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+  },
+
+  // 科学: 精密、計算、バフ系
+  science: {
+    attackPatterns: [
+      // 精密打撃: 高威力
+      [{ type: 'damage', valueMultiplier: 1.15, target: 'enemy' }],
+      // 化学反応: ダメージ + 毒
+      [
+        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'poison', extraValue: 4 },
+      ],
+      // 連鎖反応: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
+    ],
+    defensePatterns: [
+      // 計算: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 強化材: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.1, target: 'self' }],
+      // 研究: ブロック + 筋力
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 実験: エネルギー + ドロー
+      [
+        { type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 発見: 大ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 4 }],
+    ],
+  },
+
+  // 人物: コンボ起点、バフ付与、育成型
+  person: {
+    attackPatterns: [
+      // 師の教え: ダメージ + 筋力
+      [
+        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+      ],
+      // 英雄の一撃: 高威力
+      [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
+      // 先人の知恵: ダメージ + ドロー
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+    ],
+    defensePatterns: [
+      // 守護者: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+      // 賢者の盾: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 導師: ブロック + バフ
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 指導: 筋力バフ
+      [{ type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 3 }],
+      // 啓発: ドロー + 敏捷
+      [
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 1 },
+      ],
+    ],
+  },
+
+  // 名言: 多様な効果（ランダム性高め）
+  quote: {
+    attackPatterns: [
+      // 言葉の力: 高威力
+      [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
+      // 痛烈な一言: ダメージ + デバフ
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+      ],
+      // 演説: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.9, target: 'all_enemies' }],
+      // 鼓舞: ダメージ + 筋力
+      [
+        { type: 'damage', valueMultiplier: 0.7, target: 'enemy' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+      ],
+    ],
+    defensePatterns: [
+      // 名言の守り: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+      // 格言: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 教訓: ブロック + 敏捷
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 金言: バフ全部
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 1 },
+      ],
+      // 知恵: ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+    ],
+  },
+
+  // 文化: バランス型、多様な効果
+  culture: {
+    attackPatterns: [
+      // 文化の衝撃: ダメージ + デバフ
+      [
+        { type: 'damage', valueMultiplier: 0.85, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'weak', statusDuration: 2, extraValue: 1 },
+      ],
+      // 伝統の力: 高威力
+      [{ type: 'damage', valueMultiplier: 1.05, target: 'enemy' }],
+      // 祭り: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
+    ],
+    defensePatterns: [
+      // 習慣: ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+      // 儀式: ブロック + 再生
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'regeneration', statusDuration: 2, extraValue: 2 },
+      ],
+    ],
+    skillPatterns: [
+      // 継承: バフ
+      [{ type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 }],
+      // 交流: ドロー + エネルギー
+      [
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+        { type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+    ],
+  },
+
+  // 現代: 効率重視、エネルギー系
+  modern: {
+    attackPatterns: [
+      // 効率的攻撃: ダメージ + ドロー
+      [
+        { type: 'damage', valueMultiplier: 0.85, target: 'enemy' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 技術の力: 高威力
+      [{ type: 'damage', valueMultiplier: 1.1, target: 'enemy' }],
+      // 革新: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
+    ],
+    defensePatterns: [
+      // 防護: ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+      // システム: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.6, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+    ],
+    skillPatterns: [
+      // 最適化: エネルギー
+      [{ type: 'energy', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+      // 更新: ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 3 }],
+    ],
+  },
+
+  // 社会: デバフ、集団効果
+  society: {
+    attackPatterns: [
+      // 社会的圧力: ダメージ + デバフ
+      [
+        { type: 'damage', valueMultiplier: 0.75, target: 'enemy' },
+        { type: 'debuff', valueMultiplier: 0, target: 'enemy', statusType: 'vulnerable', statusDuration: 2, extraValue: 2 },
+      ],
+      // 革命: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.95, target: 'all_enemies' }],
+      // 団結: ダメージ + 筋力
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 1 },
+      ],
+    ],
+    defensePatterns: [
+      // 連帯: ブロック + 敏捷
+      [
+        { type: 'block', valueMultiplier: 0.7, target: 'self' },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 2, extraValue: 1 },
+      ],
+      // 秩序: 高ブロック
+      [{ type: 'block', valueMultiplier: 1.05, target: 'self' }],
+    ],
+    skillPatterns: [
+      // 協力: バフ
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 2 },
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'dexterity', statusDuration: 3, extraValue: 1 },
+      ],
+      // 改革: 全体デバフ
+      [
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'weak', statusDuration: 2, extraValue: 1 },
+        { type: 'debuff', valueMultiplier: 0, target: 'all_enemies', statusType: 'vulnerable', statusDuration: 2, extraValue: 1 },
+      ],
+    ],
+  },
+
+  // 文学: ドロー、バフ、物語的効果
+  literature: {
+    attackPatterns: [
+      // 物語の力: ダメージ + ドロー
+      [
+        { type: 'damage', valueMultiplier: 0.8, target: 'enemy' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 1 },
+      ],
+      // 詩の一撃: 高威力
+      [{ type: 'damage', valueMultiplier: 1.05, target: 'enemy' }],
+      // 叙事詩: 全体攻撃
+      [{ type: 'damage', valueMultiplier: 0.8, target: 'all_enemies' }],
+    ],
+    defensePatterns: [
+      // 韻律: ブロック + ドロー
+      [
+        { type: 'block', valueMultiplier: 0.5, target: 'self' },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+      ],
+      // 散文: ブロック
+      [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+    ],
+    skillPatterns: [
+      // 朗読: 大量ドロー
+      [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 4 }],
+      // インスピレーション: バフ + ドロー
+      [
+        { type: 'buff', valueMultiplier: 0, target: 'self', statusType: 'strength', extraValue: 1 },
+        { type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 },
+      ],
+    ],
+  },
+};
+
+// デフォルトテンプレート（カテゴリが見つからない場合）
+const defaultTemplate: CategoryTemplate = {
+  attackPatterns: [
+    [{ type: 'damage', valueMultiplier: 1.0, target: 'enemy' }],
+    [{ type: 'damage', valueMultiplier: 0.85, target: 'all_enemies' }],
+  ],
+  defensePatterns: [
+    [{ type: 'block', valueMultiplier: 1.0, target: 'self' }],
+  ],
+  skillPatterns: [
+    [{ type: 'draw', valueMultiplier: 0, target: 'self', extraValue: 2 }],
+  ],
+};
+
+// カードタイプに応じた効果を生成（カテゴリベース）
 const generateEffects = (basePower: number, type: CardType, rarity: number, name: string = '', category: string = '', id: number = 0): CardEffect[] => {
   const cost = calculateCost(basePower, type, name, category, id);
   const value = calculateEffectValue(basePower, type, cost, id);
   const variant = getCardVariant(id);
   const effects: CardEffect[] = [];
 
-  // 回復系カードの場合
+  // 回復系カードの場合（カテゴリに関わらず回復効果を持つ）
   if (isHealingCard(name, category)) {
-    // 回復量はコストに比例（大きな差）
     const healByCost: Record<number, number> = { 1: 8, 2: 18, 3: 30 };
     const healValue = healByCost[cost] || 12;
 
@@ -144,216 +686,107 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
       target: 'self',
     });
 
-    // バリアントで追加効果
-    if (variant >= 7) {
-      // 30%: 再生バフも付与
-      effects.push({
-        type: 'buff',
-        value: 2,
-        target: 'self',
-        statusType: 'regeneration',
-        statusDuration: 3,
-      });
-    } else if (variant >= 4) {
-      // 30%: ブロックも付与
-      effects.push({
-        type: 'block',
-        value: Math.floor(healValue / 2),
-        target: 'self',
-      });
+    // カテゴリに応じた追加効果
+    if (category === 'emotion' || category === 'mythology') {
+      // 感情・神話系は再生バフも
+      if (variant >= 5) {
+        effects.push({
+          type: 'buff',
+          value: 2,
+          target: 'self',
+          statusType: 'regeneration',
+          statusDuration: 3,
+        });
+      }
+    } else if (category === 'science' || category === 'philosophy') {
+      // 科学・哲学系はドローも
+      if (variant >= 5) {
+        effects.push({
+          type: 'draw',
+          value: 1,
+          target: 'self',
+        });
+      }
+    } else {
+      // その他はブロックも
+      if (variant >= 5) {
+        effects.push({
+          type: 'block',
+          value: Math.floor(healValue / 2),
+          target: 'self',
+        });
+      }
     }
     return effects;
   }
 
+  // カテゴリテンプレートを取得
+  const template = categoryTemplates[category] || defaultTemplate;
+
+  // タイプに応じたパターンリストを取得
+  let patterns: EffectTemplate[][];
   switch (type) {
     case 'attack':
-      // 攻撃カードのバリエーション
-      if (variant < 2) {
-        // 20%: 全体攻撃（威力は低め）
-        effects.push({
-          type: 'damage',
-          value: Math.floor(value * 0.6),
-          target: 'all_enemies',
-        });
-      } else if (variant < 4) {
-        // 20%: デバフ付き攻撃
-        effects.push({
-          type: 'damage',
-          value: Math.floor(value * 0.8),
-          target: 'enemy',
-        });
-        effects.push({
-          type: 'debuff',
-          value: 2,
-          target: 'enemy',
-          statusType: 'vulnerable',
-          statusDuration: 2,
-        });
-      } else if (variant < 6) {
-        // 20%: 高威力（シンプル）
-        effects.push({
-          type: 'damage',
-          value: value,
-          target: 'enemy',
-        });
-      } else if (variant < 8) {
-        // 20%: 弱体化付き
-        effects.push({
-          type: 'damage',
-          value: Math.floor(value * 0.85),
-          target: 'enemy',
-        });
-        effects.push({
-          type: 'debuff',
-          value: 1,
-          target: 'enemy',
-          statusType: 'weak',
-          statusDuration: 2,
-        });
-      } else {
-        // 20%: 筋力バフ付き
-        effects.push({
-          type: 'damage',
-          value: Math.floor(value * 0.7),
-          target: 'enemy',
-        });
-        effects.push({
-          type: 'buff',
-          value: 2,
-          target: 'self',
-          statusType: 'strength',
-        });
-      }
+      patterns = template.attackPatterns;
       break;
-
     case 'defense':
-      // 防御カードのバリエーション
-      if (variant < 3) {
-        // 30%: 高ブロック
-        effects.push({
-          type: 'block',
-          value: value,
-          target: 'self',
-        });
-      } else if (variant < 5) {
-        // 20%: 中ブロック + 敏捷
-        effects.push({
-          type: 'block',
-          value: Math.floor(value * 0.7),
-          target: 'self',
-        });
-        effects.push({
-          type: 'buff',
-          value: 2,
-          target: 'self',
-          statusType: 'dexterity',
-          statusDuration: 2,
-        });
-      } else if (variant < 7) {
-        // 20%: ブロック + ドロー
-        effects.push({
-          type: 'block',
-          value: Math.floor(value * 0.6),
-          target: 'self',
-        });
-        effects.push({
-          type: 'draw',
-          value: 1,
-          target: 'self',
-        });
-      } else if (variant < 9) {
-        // 20%: ブロック + 反撃ダメージ
-        effects.push({
-          type: 'block',
-          value: Math.floor(value * 0.7),
-          target: 'self',
-        });
-        effects.push({
-          type: 'damage',
-          value: Math.floor(value * 0.3),
-          target: 'enemy',
-        });
-      } else {
-        // 10%: 敵を弱体化
-        effects.push({
-          type: 'block',
-          value: Math.floor(value * 0.5),
-          target: 'self',
-        });
-        effects.push({
-          type: 'debuff',
-          value: 2,
-          target: 'enemy',
-          statusType: 'weak',
-          statusDuration: 2,
-        });
-      }
+      patterns = template.defensePatterns;
       break;
-
     case 'skill':
-      // スキルカードはさらに多様
-      if (variant < 2) {
-        // 20%: 大量ドロー
-        effects.push({
-          type: 'draw',
-          value: cost + 2,
-          target: 'self',
-        });
-      } else if (variant < 4) {
-        // 20%: エネルギー獲得 + ドロー
-        effects.push({
-          type: 'energy',
-          value: 2,
-          target: 'self',
-        });
-        effects.push({
-          type: 'draw',
-          value: 1,
-          target: 'self',
-        });
-      } else if (variant < 6) {
-        // 20%: 大筋力バフ
-        effects.push({
-          type: 'buff',
-          value: cost + 2,
-          target: 'self',
-          statusType: 'strength',
-        });
-      } else if (variant < 8) {
-        // 20%: 敵全体にデバフ
-        effects.push({
-          type: 'debuff',
-          value: 2,
-          target: 'all_enemies',
-          statusType: 'vulnerable',
-          statusDuration: 2,
-        });
-        effects.push({
-          type: 'debuff',
-          value: 2,
-          target: 'all_enemies',
-          statusType: 'weak',
-          statusDuration: 2,
-        });
-      } else {
-        // 20%: 複合効果（小ダメージ + 小ブロック + ドロー）
-        effects.push({
-          type: 'damage',
-          value: 5 + cost * 3,
-          target: 'all_enemies',
-        });
-        effects.push({
-          type: 'block',
-          value: 5 + cost * 3,
-          target: 'self',
-        });
-        effects.push({
-          type: 'draw',
-          value: 1,
-          target: 'self',
-        });
-      }
+      patterns = template.skillPatterns;
       break;
+    default:
+      patterns = template.skillPatterns;
+  }
+
+  // IDとレアリティを組み合わせてパターンを選択（より多様性を出す）
+  const patternIndex = (id + rarity) % patterns.length;
+  const selectedPattern = patterns[patternIndex];
+
+  // パターンから効果を生成
+  for (const template of selectedPattern) {
+    const effect: CardEffect = {
+      type: template.type,
+      value: Math.floor(value * template.valueMultiplier) + (template.extraValue || 0),
+      target: template.target,
+    };
+
+    if (template.statusType) {
+      effect.statusType = template.statusType;
+    }
+    if (template.statusDuration) {
+      effect.statusDuration = template.statusDuration;
+    }
+
+    // 値が0以下の効果は除外（バフ/デバフは値0でもOK）
+    if (effect.value > 0 || template.statusType) {
+      effects.push(effect);
+    }
+  }
+
+  // レアリティボーナス: 高レアリティは追加効果
+  if (rarity >= 4 && variant >= 7) {
+    // レア4以上で30%の確率で追加効果
+    if (type === 'attack') {
+      effects.push({
+        type: 'buff',
+        value: 1,
+        target: 'self',
+        statusType: 'strength',
+      });
+    } else if (type === 'defense') {
+      effects.push({
+        type: 'draw',
+        value: 1,
+        target: 'self',
+      });
+    } else {
+      effects.push({
+        type: 'energy',
+        value: 1,
+        target: 'self',
+      });
+    }
   }
 
   return effects;

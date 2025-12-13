@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RunState, BattleState, CardInstance, Enemy, Card } from '../types/game';
+import { RunState, BattleState, CardInstance, Enemy, Card, StatusEffect } from '../types/game';
 import { BattleCard } from '../components/BattleCard';
 import { EnemyDisplay } from '../components/EnemyDisplay';
 import {
@@ -91,7 +91,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [targetEnemyIndex, setTargetEnemyIndex] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [turnPhase, setTurnPhase] = useState<'player' | 'enemy' | 'draw'>('draw');
-  const [message, setMessage] = useState<string>('');
+  const [messages, setMessages] = useState<Array<{ id: string; text: string; opacity: Animated.Value }>>([]);
   const [enemiesKilledThisBattle, setEnemiesKilledThisBattle] = useState<number>(0);
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
   const [isSelectingTarget, setIsSelectingTarget] = useState(false);
@@ -101,7 +101,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // アニメーション
   const shakeAnims = useRef<Animated.Value[]>([]).current;
-  const messageOpacity = useRef(new Animated.Value(0)).current;
 
   // バトル初期化
   useEffect(() => {
@@ -138,18 +137,25 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('player');
   };
 
-  // メッセージを表示
+  // メッセージを表示（スタック式：複数同時表示可能）
   const showMessage = (msg: string) => {
-    setMessage(msg);
-    messageOpacity.setValue(1);
+    const id = Math.random().toString(36).substr(2, 9);
+    const opacity = new Animated.Value(1);
+
+    setMessages(prev => [...prev, { id, text: msg, opacity }]);
+
+    // 1.5秒後にフェードアウト開始（スタック表示なのでテンポ良く）
     Animated.sequence([
-      Animated.delay(1800),
-      Animated.timing(messageOpacity, {
+      Animated.delay(1500),
+      Animated.timing(opacity, {
         toValue: 0,
-        duration: 600,
+        duration: 400,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(() => {
+      // フェードアウト完了後にメッセージを削除
+      setMessages(prev => prev.filter(m => m.id !== id));
+    });
   };
 
   // フローティングダメージを追加（効果音付き）
@@ -294,11 +300,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`);
     }
 
-    // ブロック獲得を表示
+    // 防御力強化を表示
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
-      showMessage(`📦 ${card.name}: ${blockGained}ブロック獲得！`);
+      showMessage(`📦 ${card.name}: 防御力+${blockGained}！`);
     }
 
     // 敵へのダメージアニメーション
@@ -412,15 +418,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       }
     }
 
-    // ブロック獲得を表示（プレイヤー）
+    // 防御力強化を表示（プレイヤー）
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
       // 効果を含めたメッセージ
       if (dexterityBonus > 0) {
-        showMessage(`${blockGained}ブロック獲得 (🏃+${dexterityBonus})`);
+        showMessage(`防御力+${blockGained} (🏃+${dexterityBonus})`);
       } else {
-        showMessage(`${blockGained}ブロック獲得！`);
+        showMessage(`防御力+${blockGained}！`);
       }
     }
 
@@ -466,11 +472,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setDiscardPile(playResult.discardPile);
 
     // 追加ドロー
+    let finalHand = playResult.hand;
     if (result.cardsDrawn > 0) {
       const drawResult = drawCards(drawPile, playResult.discardPile, playResult.hand, result.cardsDrawn);
       setHand(drawResult.hand);
       setDrawPile(drawResult.drawPile);
       setDiscardPile(drawResult.discardPile);
+      finalHand = drawResult.hand;
     }
 
     // 勝利判定
@@ -484,20 +492,29 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     setIsProcessing(false);
 
-    // 自動ターン終了チェック（カード使用後）
+    // 自動ターン終了チェック（カード使用後）- 追加ドロー後の手札でチェック
     const newEnergy = energy - card.cost + result.energyGained;
-    const newHand = playResult.hand;
-    checkAutoEndTurn(newEnergy, newHand, result.enemies);
+    checkAutoEndTurn(newEnergy, finalHand, result.enemies);
   };
 
   // 自動ターン終了チェック
   const checkAutoEndTurn = (currentEnergy: number, currentHand: CardInstance[], enemies: Enemy[]) => {
-    // 打てるカードがあるかチェック
-    const canPlayAny = currentHand.some(cardInst =>
-      cardInst.card.cost <= currentEnergy && canPlayCard(cardInst.card, currentEnergy, enemies)
-    );
+    // 手札が0枚なら即座に終了
+    if (currentHand.length === 0) {
+      setTimeout(() => {
+        handleEndTurn();
+      }, 800);
+      return;
+    }
 
-    if (!canPlayAny && currentHand.length > 0) {
+    // 打てるカードがあるかチェック（0コストカードも含めて正確にチェック）
+    const canPlayAny = currentHand.some(cardInst => {
+      const card = cardInst.card;
+      // エネルギーが足りるか AND カードが使用可能か
+      return card.cost <= currentEnergy && canPlayCard(card, currentEnergy, enemies);
+    });
+
+    if (!canPlayAny) {
       // 0.8秒後に自動でターン終了
       setTimeout(() => {
         handleEndTurn();
@@ -513,80 +530,238 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('enemy');
     setSelectedCardIndex(null);
 
-    // 敵のターン処理 - 各敵の行動を順番に表示
-    setTimeout(() => {
-      const enemyResult = processEnemyTurn(battleState, hp, playerBlock);
+    showMessage('⚔️ 敵のターン！');
 
-      // 生存している敵の行動を集計
-      const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
-      const actions: string[] = [];
+    // 敵を一体ずつ順番に処理
+    const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+    let currentHp = hp;
+    let currentBlock = playerBlock;
+    let currentPlayerStatuses = [...battleState.playerStatuses];
+    let updatedEnemies = [...battleState.enemies];
+    let enemyIndex = 0;
 
-      aliveEnemies.forEach(enemy => {
-        switch (enemy.intent.type) {
-          case 'attack':
-            actions.push(`${enemy.name}が${enemy.intent.value}攻撃！`);
-            break;
-          case 'defend':
-            actions.push(`${enemy.name}が${enemy.intent.value}防御！`);
-            break;
-          case 'buff':
-            actions.push(`${enemy.name}が強化！`);
-            break;
-          case 'debuff':
-            actions.push(`${enemy.name}が弱体化！`);
-            break;
-        }
-      });
-
-      // 攻撃ダメージの計算
-      const attackingEnemies = aliveEnemies.filter(e => e.intent.type === 'attack');
-      const totalIntent = attackingEnemies.reduce((sum, e) => sum + (e.intent.value || 0), 0);
-      const blockedAmount = Math.min(playerBlock, totalIntent);
-      const actualDamage = hp - enemyResult.hp;
-
-      // Step 1: 各敵の行動を表示
-      if (actions.length > 0) {
-        showMessage(`⚔️ ${actions[0]}`);
+    const processNextEnemy = () => {
+      if (enemyIndex >= aliveEnemies.length) {
+        // 全敵の処理完了 - 次のターンへ
+        finishEnemyTurn(currentHp, currentBlock, updatedEnemies, currentPlayerStatuses);
+        return;
       }
 
+      const enemy = aliveEnemies[enemyIndex];
+      const enemyArrayIndex = battleState.enemies.findIndex(e => e.id === enemy.id);
+
       setTimeout(() => {
-        if (totalIntent > 0) {
-          // 攻撃があった場合
-          if (playerBlock > 0 && blockedAmount > 0) {
-            showMessage(`🛡️ ${blockedAmount}ブロック → ${actualDamage > 0 ? `${actualDamage}ダメージ！` : '完全防御！'}`);
-            if (blockedAmount > 0) {
-              addFloatingNumber(blockedAmount, 'block', SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT * 0.65);
-            }
-            if (actualDamage > 0) {
-              addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-            }
-          } else if (actualDamage > 0) {
-            showMessage(`💥 ${actualDamage}ダメージ！`);
-            addFloatingNumber(actualDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-          }
-        } else {
-          // 攻撃がなかった場合（防御やバフのみ）
-          const nonAttackActions = aliveEnemies
-            .filter(e => e.intent.type !== 'attack')
-            .map(e => {
-              if (e.intent.type === 'defend') return `🛡️${e.name} +${e.intent.value}防御`;
-              if (e.intent.type === 'buff') return `⬆️${e.name} 強化`;
-              if (e.intent.type === 'debuff') return `⬇️${e.name} 弱体化`;
-              return '';
-            })
-            .filter(s => s);
-          if (nonAttackActions.length > 0) {
-            showMessage(nonAttackActions.join(' / '));
-          }
+        // この敵の行動を処理
+        const actionResult = processOneEnemyAction(
+          enemy,
+          currentHp,
+          currentBlock,
+          currentPlayerStatuses
+        );
+
+        // 結果を反映
+        const prevHp = currentHp;
+        currentHp = actionResult.hp;
+        currentBlock = actionResult.block;
+        currentPlayerStatuses = actionResult.playerStatuses;
+
+        // 敵のステータス更新（バフなど）
+        if (actionResult.updatedEnemy) {
+          updatedEnemies[enemyArrayIndex] = actionResult.updatedEnemy;
         }
 
-        // 状態更新
-        setHp(enemyResult.hp);
-        setPlayerBlock(enemyResult.block);
-        setBattleState(enemyResult.battleState);
-        checkBattleEndAndContinue(enemyResult);
-      }, 700);
+        // ダメージ表示
+        const damageTaken = prevHp - currentHp;
+        const blocked = actionResult.blocked;
+
+        if (damageTaken > 0 || blocked > 0) {
+          if (blocked > 0 && damageTaken > 0) {
+            showMessage(`${enemy.name}: 🛡️${blocked}防御 → ${damageTaken}ダメージ！`);
+            addFloatingNumber(blocked, 'block', SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT * 0.65);
+            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2 + 30, SCREEN_HEIGHT * 0.7);
+            playSound('damage');
+          } else if (blocked > 0) {
+            showMessage(`${enemy.name}: 🛡️${blocked}防御 → 完全防御！`);
+            addFloatingNumber(blocked, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
+          } else if (damageTaken > 0) {
+            showMessage(`${enemy.name}: 💥${damageTaken}ダメージ！`);
+            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
+            playSound('damage');
+          }
+        } else if (actionResult.actionType === 'defend') {
+          showMessage(`${enemy.name}が防御態勢！`);
+        } else if (actionResult.actionType === 'buff') {
+          showMessage(`${enemy.name}が自己強化！`);
+        } else if (actionResult.actionType === 'debuff') {
+          showMessage(`${enemy.name}が弱体化をかけてきた！`);
+        } else {
+          showMessage(`${enemy.name}は様子を見ている...`);
+        }
+
+        // HP更新（リアルタイム表示）
+        setHp(currentHp);
+        setPlayerBlock(currentBlock);
+
+        // 敗北判定
+        if (currentHp <= 0) {
+          setTimeout(() => {
+            handleBattleEnd(false);
+          }, 500);
+          return;
+        }
+
+        // 次の敵へ
+        enemyIndex++;
+        processNextEnemy();
+      }, 800);
+    };
+
+    // 最初の敵の処理を開始
+    setTimeout(() => {
+      processNextEnemy();
     }, 500);
+  };
+
+  // 敵一体の行動を処理
+  const processOneEnemyAction = (
+    enemy: Enemy,
+    currentHp: number,
+    currentBlock: number,
+    playerStatuses: StatusEffect[]
+  ): {
+    hp: number;
+    block: number;
+    blocked: number;
+    playerStatuses: StatusEffect[];
+    updatedEnemy: Enemy | null;
+    actionType: string;
+  } => {
+    let newHp = currentHp;
+    let newBlock = currentBlock;
+    let blocked = 0;
+    let newPlayerStatuses = [...playerStatuses];
+    let updatedEnemy: Enemy | null = null;
+    const actionType = enemy.intent.type;
+
+    switch (enemy.intent.type) {
+      case 'attack':
+        const attackDamage = enemy.intent.value || 0;
+        // 敵の筋力バフを適用
+        const strengthBuff = enemy.statuses.find(s => s.type === 'strength')?.stacks || 0;
+        const totalDamage = attackDamage + strengthBuff;
+
+        // プレイヤーの脆弱を適用
+        const isVulnerable = playerStatuses.some(s => s.type === 'vulnerable');
+        const finalDamage = isVulnerable ? Math.floor(totalDamage * 1.5) : totalDamage;
+
+        // ブロックで軽減
+        blocked = Math.min(newBlock, finalDamage);
+        const actualDamage = finalDamage - blocked;
+        newBlock = Math.max(0, newBlock - finalDamage);
+        newHp = Math.max(0, newHp - actualDamage);
+        break;
+
+      case 'defend':
+        updatedEnemy = {
+          ...enemy,
+          block: enemy.block + (enemy.intent.value || 0),
+        };
+        break;
+
+      case 'buff':
+        const buffValue = enemy.intent.value || 2;
+        const existingBuff = enemy.statuses.find(s => s.type === 'strength');
+        if (existingBuff) {
+          updatedEnemy = {
+            ...enemy,
+            statuses: enemy.statuses.map(s =>
+              s.type === 'strength' ? { ...s, stacks: s.stacks + buffValue } : s
+            ),
+          };
+        } else {
+          updatedEnemy = {
+            ...enemy,
+            statuses: [...enemy.statuses, { type: 'strength' as const, stacks: buffValue }],
+          };
+        }
+        break;
+
+      case 'debuff':
+        const debuffValue = enemy.intent.value || 2;
+        const existingDebuff = newPlayerStatuses.find(s => s.type === 'weak');
+        if (existingDebuff) {
+          newPlayerStatuses = newPlayerStatuses.map(s =>
+            s.type === 'weak' ? { ...s, stacks: s.stacks + debuffValue } : s
+          );
+        } else {
+          newPlayerStatuses.push({
+            type: 'weak',
+            stacks: debuffValue,
+            duration: 2,
+          });
+        }
+        break;
+    }
+
+    return {
+      hp: newHp,
+      block: newBlock,
+      blocked,
+      playerStatuses: newPlayerStatuses,
+      updatedEnemy,
+      actionType,
+    };
+  };
+
+  // 敵ターン終了処理
+  const finishEnemyTurn = (
+    finalHp: number,
+    finalBlock: number,
+    enemies: Enemy[],
+    playerStatuses: StatusEffect[]
+  ) => {
+    // 次の行動を決定
+    const enemiesWithNewIntent = enemies.map(enemy => ({
+      ...enemy,
+      intent: selectNextIntent(enemy),
+    }));
+
+    const newBattleState: BattleState = {
+      ...battleState!,
+      enemies: enemiesWithNewIntent,
+      playerStatuses,
+      turn: battleState!.turn + 1,
+      playerBlock: 0,
+      isPlayerTurn: true,
+    };
+
+    setHp(finalHp);
+    setPlayerBlock(0);
+    setBattleState(newBattleState);
+
+    checkBattleEndAndContinue({ hp: finalHp, battleState: newBattleState });
+  };
+
+  // 次の敵行動を選択（runStoreからインポートできない場合はここで定義）
+  const selectNextIntent = (enemy: Enemy): Enemy['intent'] => {
+    const patterns = enemy.patterns || [
+      { type: 'attack' as const, value: 8, weight: 60 },
+      { type: 'defend' as const, value: 5, weight: 20 },
+      { type: 'buff' as const, value: 2, weight: 10 },
+      { type: 'debuff' as const, value: 2, weight: 10 },
+    ];
+
+    const totalWeight = patterns.reduce((sum, p) => sum + (p.weight || 1), 0);
+    let random = Math.random() * totalWeight;
+
+    for (const pattern of patterns) {
+      random -= pattern.weight || 1;
+      if (random <= 0) {
+        return { type: pattern.type, value: pattern.value };
+      }
+    }
+
+    return patterns[0];
   };
 
   // 敵ターン終了後の処理
@@ -815,10 +990,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         </View>
       </View>
 
-      {/* メッセージ */}
-      <Animated.View style={[styles.messageContainer, { opacity: messageOpacity }]}>
-        <Text style={styles.messageText}>{message}</Text>
-      </Animated.View>
+      {/* メッセージ（スタック表示） */}
+      <View style={styles.messageContainer}>
+        {messages.map((msg, index) => (
+          <Animated.View
+            key={msg.id}
+            style={[
+              styles.messageItem,
+              { opacity: msg.opacity, transform: [{ translateY: index * -36 }] }
+            ]}
+          >
+            <Text style={styles.messageText}>{msg.text}</Text>
+          </Animated.View>
+        ))}
+      </View>
 
       {/* フローティングダメージ */}
       {floatingNumbers.map(num => (
@@ -1160,24 +1345,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
   },
-  // メッセージ
+  // メッセージ（スタック表示）
   messageContainer: {
     position: 'absolute',
-    top: '40%',
+    top: '42%',
     alignSelf: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
+  messageItem: {
+    marginBottom: 4,
+  },
   messageText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   // フローティングダメージ

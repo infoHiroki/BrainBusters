@@ -201,9 +201,9 @@ export interface MetaData {
 export const GAME_CONFIG = {
   MAX_FLOOR: 50,  // 50階ダンジョン
   BOSS_FLOORS: [10, 20, 30, 40, 50],  // ボス5体（10階ごと）
-  STARTING_HP: 60,
-  STARTING_ENERGY: 5,  // 選択肢を増やすため増加
-  STARTING_HAND_SIZE: 6,  // 手札も増加
+  STARTING_HP: 70,
+  STARTING_ENERGY: 4,  // 4エネルギー（手札6枚、コスト高めで選択が必要）
+  STARTING_HAND_SIZE: 6,  // 手札6枚
   STARTING_DECK_SIZE: 10,
   STARTING_GOLD: 50,
 } as const;

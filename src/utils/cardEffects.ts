@@ -155,7 +155,24 @@ export const playCardEffects = (
 
       case 'debuff':
         if (effect.statusType) {
-          if (effect.target === 'all_enemies') {
+          if (effect.target === 'self') {
+            // 自己デバフ（ハイリスク系カード）
+            const existingIndex = playerStatuses.findIndex(
+              s => s.type === effect.statusType
+            );
+            if (existingIndex >= 0) {
+              playerStatuses[existingIndex] = {
+                ...playerStatuses[existingIndex],
+                stacks: playerStatuses[existingIndex].stacks + effect.value,
+              };
+            } else {
+              playerStatuses.push({
+                type: effect.statusType,
+                stacks: effect.value,
+                duration: effect.statusDuration,
+              });
+            }
+          } else if (effect.target === 'all_enemies') {
             // 全体デバフ
             enemies = enemies.map(enemy => {
               if (enemy.hp <= 0) return enemy;

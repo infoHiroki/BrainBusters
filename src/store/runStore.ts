@@ -368,6 +368,7 @@ export const processEnemyTurn = (
   let newHp = currentHp;
   let newBlock = currentBlock; // ブロックを引き継ぐ（敵の攻撃を防ぐ）
   const damages: number[] = [];
+  let playerStatuses = [...battleState.playerStatuses];
 
   const newEnemies = battleState.enemies.map(enemy => {
     if (enemy.hp <= 0) return enemy;
@@ -379,7 +380,7 @@ export const processEnemyTurn = (
           newHp,
           newBlock,
           enemy.intent.value || 0,
-          battleState.playerStatuses,
+          playerStatuses,
           enemy.statuses
         );
         newHp = damageResult.hp;
@@ -394,11 +395,39 @@ export const processEnemyTurn = (
         };
 
       case 'buff':
-        // TODO: バフ実装
-        break;
+        // 敵自身を強化（筋力バフ）
+        const buffValue = enemy.intent.value || 2;
+        const existingBuff = enemy.statuses.find(s => s.type === 'strength');
+        if (existingBuff) {
+          return {
+            ...enemy,
+            statuses: enemy.statuses.map(s =>
+              s.type === 'strength' ? { ...s, stacks: s.stacks + buffValue } : s
+            ),
+          };
+        } else {
+          return {
+            ...enemy,
+            statuses: [...enemy.statuses, { type: 'strength', stacks: buffValue }],
+          };
+        }
 
       case 'debuff':
-        // TODO: デバフ実装
+        // プレイヤーに弱体化を付与
+        const debuffValue = enemy.intent.value || 2;
+        const debuffType = 'weak'; // デフォルトは弱体化
+        const existingDebuff = playerStatuses.find(s => s.type === debuffType);
+        if (existingDebuff) {
+          playerStatuses = playerStatuses.map(s =>
+            s.type === debuffType ? { ...s, stacks: s.stacks + debuffValue } : s
+          );
+        } else {
+          playerStatuses.push({
+            type: debuffType,
+            stacks: debuffValue,
+            duration: 2, // 2ターン持続
+          });
+        }
         break;
     }
 
@@ -415,6 +444,7 @@ export const processEnemyTurn = (
     battleState: {
       ...battleState,
       enemies: enemiesWithNewIntent,
+      playerStatuses, // デバフを適用した状態を返す
       turn: battleState.turn + 1,
       playerBlock: 0, // ブロックリセット
       isPlayerTurn: true,
