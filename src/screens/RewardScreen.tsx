@@ -8,6 +8,8 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RunState, Card, Relic } from '../types/game';
@@ -46,6 +48,70 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   useEffect(() => {
     onTakeGold();
   }, []);
+
+  // ボスレリック自動獲得
+  useEffect(() => {
+    if (isBossReward && relicRewardRef.current && !relicTaken && onSelectRelic) {
+      setRelicTaken(true);
+      onSelectRelic(relicRewardRef.current);
+    }
+  }, [isBossReward, relicTaken, onSelectRelic]);
+
+  // ボス撃破時のパーティクルアニメーション
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const particleCount = 30;
+  const particles = useRef(
+    Array.from({ length: particleCount }, () => ({
+      x: new Animated.Value(screenWidth / 2),
+      y: new Animated.Value(screenHeight / 2),
+      opacity: new Animated.Value(1),
+      scale: new Animated.Value(0),
+      color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF69B4'][
+        Math.floor(Math.random() * 6)
+      ],
+      emoji: ['✨', '⭐', '🌟', '💫', '🎉', '🏆'][Math.floor(Math.random() * 6)],
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (isBossReward) {
+      particles.forEach((particle, index) => {
+        const angle = (index / particleCount) * 2 * Math.PI + Math.random() * 0.5;
+        const distance = 150 + Math.random() * 150;
+        const targetX = screenWidth / 2 + Math.cos(angle) * distance;
+        const targetY = screenHeight / 3 + Math.sin(angle) * distance - 100;
+
+        Animated.sequence([
+          Animated.delay(index * 30),
+          Animated.parallel([
+            Animated.timing(particle.scale, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(particle.x, {
+              toValue: targetX,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(particle.y, {
+              toValue: targetY + 200,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.delay(1000),
+              Animated.timing(particle.opacity, {
+                toValue: 0,
+                duration: 500,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+        ]).start();
+      });
+    }
+  }, [isBossReward]);
 
   // カード報酬を生成（初回のみ）
   const cardRewardsRef = useRef<Card[] | null>(null);
@@ -110,6 +176,26 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
         style={StyleSheet.absoluteFill}
       />
 
+      {/* ボス撃破パーティクル */}
+      {isBossReward && particles.map((particle, index) => (
+        <Animated.Text
+          key={index}
+          style={[
+            styles.particle,
+            {
+              transform: [
+                { translateX: Animated.subtract(particle.x, screenWidth / 2) },
+                { translateY: Animated.subtract(particle.y, screenHeight / 2) },
+                { scale: particle.scale },
+              ],
+              opacity: particle.opacity,
+            },
+          ]}
+        >
+          {particle.emoji}
+        </Animated.Text>
+      ))}
+
       {/* タイトル */}
       <View style={styles.header}>
         <Text style={styles.title}>
@@ -119,12 +205,12 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* ボス撃破時HP回復 */}
+        {/* ボス撃破時HP全回復 */}
         {isBossReward && (
           <View style={styles.rewardSection}>
             <View style={styles.healRewardAuto}>
-              <Text style={styles.healText}>💚 HP回復！（最大HPの30%）</Text>
-              <Text style={styles.healTotalText}>現在HP: {runState.hp} / {runState.maxHp}</Text>
+              <Text style={styles.healText}>💚 HP全回復！</Text>
+              <Text style={styles.healTotalText}>HP: {runState.maxHp} / {runState.maxHp}</Text>
             </View>
           </View>
         )}
@@ -193,13 +279,11 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
           )}
         </View>
 
-        {/* レリック報酬（ボス戦のみ） */}
+        {/* レリック報酬（ボス戦のみ・自動獲得） */}
         {isBossReward && relicReward && (
           <View style={styles.rewardSection}>
-            <Text style={styles.sectionTitle}>
-              {relicTaken ? '✨ ボスレリック獲得済み！' : '🎁 ボスレリック'}
-            </Text>
-            <View style={[styles.relicReward, relicTaken && styles.relicAcquired]}>
+            <Text style={styles.sectionTitle}>✨ ボスレリック獲得！</Text>
+            <View style={[styles.relicReward, styles.relicAcquired]}>
               <View style={styles.relicIcon}>
                 <Text style={styles.relicEmoji}>🏆</Text>
               </View>
@@ -210,11 +294,6 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
                   {relicReward.rarity.toUpperCase()}
                 </Text>
               </View>
-              {!relicTaken && (
-                <TouchableOpacity style={styles.acquireButton} onPress={handleSelectRelic}>
-                  <Text style={styles.acquireButtonText}>タップで獲得</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         )}
@@ -232,7 +311,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {runState.floor >= 25 ? 'クリア！' : selectedCard
+              {runState.floor >= 50 ? 'クリア！' : selectedCard
                 ? (cardAction === 'stock' ? `${selectedCard.name}をストック` : `${selectedCard.name}をデッキに追加`)
                 : '次の階へ進む'}
             </Text>
@@ -258,6 +337,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0a1a',
     alignItems: 'center',
+  },
+  particle: {
+    position: 'absolute',
+    fontSize: 24,
+    zIndex: 100,
+    left: '50%',
+    top: '50%',
   },
   header: {
     alignItems: 'center',
