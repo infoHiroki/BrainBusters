@@ -24,6 +24,7 @@ interface RewardScreenProps {
   goldReward: number;
   onSelectCard: (card: Card) => Promise<void>;
   onSetStockCard: (card: Card) => Promise<void>;
+  onReplaceStockCard: (index: number, newCard: Card) => Promise<void>;
   onSelectRelic?: (relic: Relic) => void;
   onSkip: () => void;
   onTakeGold: () => void;
@@ -35,6 +36,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   goldReward,
   onSelectCard,
   onSetStockCard,
+  onReplaceStockCard,
   onSelectRelic,
   onSkip,
   onTakeGold,
@@ -43,6 +45,8 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   const [selectedCard, setSelectedCard] = useState<Card | null>(null); // 選択中のカード（再選択可能）
   const [relicTaken, setRelicTaken] = useState(false);
   const [cardAction, setCardAction] = useState<'deck' | 'stock'>('stock'); // デフォルトはストック
+  const [isReplacingStock, setIsReplacingStock] = useState(false); // ストック交換モード
+  const [selectedStockIndex, setSelectedStockIndex] = useState<number | null>(null); // 交換対象のストックインデックス
 
   // ゴールド自動取得
   useEffect(() => {
@@ -157,10 +161,33 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   const canProceed = goldTaken;
   const stockIsFull = runState.stockCards.length >= 5;
 
+  // ストック交換モードへ切り替え
+  const handleEnterReplaceMode = () => {
+    setIsReplacingStock(true);
+    setSelectedStockIndex(null);
+  };
+
+  // ストック交換モードをキャンセル
+  const handleCancelReplace = () => {
+    setIsReplacingStock(false);
+    setSelectedStockIndex(null);
+  };
+
+  // 交換対象のストックカードを選択
+  const handleSelectStockForReplace = (index: number) => {
+    setSelectedStockIndex(index === selectedStockIndex ? null : index);
+  };
+
   // 「次の階へ進む」ボタン押下時にカードを確定
   const handleProceed = async () => {
-    if (selectedCard && !stockIsFull) {
-      await onSetStockCard(selectedCard); // ストックに追加
+    if (selectedCard) {
+      if (isReplacingStock && selectedStockIndex !== null) {
+        // ストック交換
+        await onReplaceStockCard(selectedStockIndex, selectedCard);
+      } else if (!stockIsFull) {
+        // ストックに追加
+        await onSetStockCard(selectedCard);
+      }
     }
     onSkip();
   };
@@ -247,11 +274,41 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
           {selectedCard && (
             <View style={styles.cardActionContainer}>
               <Text style={styles.selectedMessage}>「{selectedCard.name}」を選択中</Text>
-              {stockIsFull ? (
-                <Text style={styles.stockWarning}>⚠️ ストックが満杯です（5枚）</Text>
-              ) : (
+              {stockIsFull && !isReplacingStock ? (
+                <View style={styles.stockFullContainer}>
+                  <Text style={styles.stockWarning}>⚠️ ストックが満杯です（5枚）</Text>
+                  <TouchableOpacity style={styles.replaceButton} onPress={handleEnterReplaceMode}>
+                    <Text style={styles.replaceButtonText}>🔄 ストックと交換する</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : !isReplacingStock ? (
                 <Text style={styles.stockInfo}>📦 ストック: {runState.stockCards.length}/5 - 戦闘中いつでも使用可能！</Text>
-              )}
+              ) : null}
+            </View>
+          )}
+
+          {/* ストック交換モード */}
+          {isReplacingStock && selectedCard && (
+            <View style={styles.replaceSection}>
+              <Text style={styles.replaceSectionTitle}>🔄 交換するストックカードを選択</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.stockCardRow}
+              >
+                {runState.stockCards.map((stockCard, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.stockCardItem}
+                    onPress={() => handleSelectStockForReplace(index)}
+                  >
+                    <BattleCard card={stockCard} selected={selectedStockIndex === index} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.cancelReplaceButton} onPress={handleCancelReplace}>
+                <Text style={styles.cancelReplaceText}>✕ キャンセル</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -288,9 +345,13 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {runState.floor >= 50 ? 'クリア！' : selectedCard && !stockIsFull
-                ? `📦 ${selectedCard.name}をストック`
-                : '次の階へ進む'}
+              {runState.floor >= 50
+                ? 'クリア！'
+                : isReplacingStock && selectedCard && selectedStockIndex !== null
+                  ? `🔄 ${runState.stockCards[selectedStockIndex]?.name} と交換`
+                  : selectedCard && !stockIsFull
+                    ? `📦 ${selectedCard.name}をストック`
+                    : '次の階へ進む'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -520,6 +581,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
+  },
+  stockFullContainer: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  replaceButton: {
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  replaceButtonText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  replaceSection: {
+    marginTop: 16,
+    padding: 12,
+    alignItems: 'center',
+  },
+  replaceSectionTitle: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  stockCardRow: {
+    flexDirection: 'row',
+    paddingTop: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 8,
+    gap: 12,
+  },
+  stockCardItem: {
+    alignItems: 'center',
+  },
+  stockCardSelected: {
+    // BattleCardのselected propで処理
+  },
+  cancelReplaceButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  cancelReplaceText: {
+    color: '#888',
+    fontSize: 14,
   },
   relicReward: {
     backgroundColor: 'rgba(155, 89, 182, 0.3)',

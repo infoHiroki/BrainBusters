@@ -24,6 +24,7 @@ import {
   updateGold,
   healPlayer,
   setStockCard,
+  replaceStockCard,
 } from '../store/runStore';
 import { GameStats, loadStats, updateStatsAfterRun } from '../store/statsStore';
 
@@ -134,6 +135,15 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
     const updated = await setStockCard(runState, card);
     setRunState(updated);
     console.log(`ストックカード設定: ${card.name}`);
+  };
+
+  // ストックカードを交換
+  const handleReplaceStockCard = async (index: number, newCard: Card): Promise<void> => {
+    if (!runState) return;
+
+    const updated = await replaceStockCard(runState, index, newCard);
+    setRunState(updated);
+    console.log(`ストックカード交換: ${runState.stockCards[index]?.name} → ${newCard.name}`);
   };
 
   // レリック選択
@@ -259,6 +269,7 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
         goldReward={goldReward}
         onSelectCard={handleSelectCard}
         onSetStockCard={handleSetStockCard}
+        onReplaceStockCard={handleReplaceStockCard}
         onSelectRelic={handleSelectRelic}
         onSkip={handleProceed}
         onTakeGold={handleTakeGold}
