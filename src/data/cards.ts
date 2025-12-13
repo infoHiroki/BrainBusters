@@ -73,56 +73,93 @@ const getCategoryType = (category: string, name: string): CardType => {
   return 'skill';
 };
 
-// basePowerからコストを計算
-const calculateCost = (basePower: number, type: CardType, name: string = '', category: string = ''): number => {
-  // 回復カードは中程度のコスト（強力なため）
+// カードの「個性」を決定するためのハッシュ関数
+const getCardVariant = (id: number): number => {
+  // IDを使って一貫したバリアント（0-9）を生成
+  return id % 10;
+};
+
+// basePowerからコストを計算（バリアントで変化）
+const calculateCost = (basePower: number, type: CardType, name: string = '', category: string = '', id: number = 0): number => {
+  const variant = getCardVariant(id);
+
+  // 回復カードは強力なのでコスト高め、ただしバリアントで変化
   if (isHealingCard(name, category)) {
-    if (basePower >= 70) return 2;
-    return 1;
+    if (variant < 3) return 1; // 30%: 低コスト・低効果
+    if (variant < 7) return 2; // 40%: 中コスト
+    return 3; // 30%: 高コスト・高効果
   }
 
-  // スキルカード（ドロー系）は低コストに
+  // スキルカード
   if (type === 'skill') {
-    if (basePower >= 85) return 1;
-    return 0;
+    if (variant < 4) return 0; // 40%: 無料
+    if (variant < 8) return 1; // 40%: 低コスト
+    return 2; // 20%: 高コスト・高効果
   }
 
-  // 攻撃・防御カード
-  if (basePower >= 85) return 3;
-  if (basePower >= 70) return 2;
-  if (basePower >= 50) return 1;
-  return 0;
+  // 攻撃・防御カード - basePowerとバリアントの組み合わせ
+  if (variant < 2) return 0; // 20%: 無料（弱い）
+  if (variant < 5) return 1; // 30%: 低コスト
+  if (variant < 8) return 2; // 30%: 中コスト
+  return 3; // 20%: 高コスト・強力
 };
 
-// basePowerから効果値を計算
-const calculateEffectValue = (basePower: number, type: CardType): number => {
-  // ダメージ/ブロック値の計算
-  // basePower 1-100 → 効果値 3-20
-  const base = Math.floor(basePower / 5) + 2;
-  return Math.max(3, Math.min(20, base));
+// コストに応じた効果値を計算（大きな差を持たせる）
+const calculateEffectValue = (basePower: number, type: CardType, cost: number, id: number = 0): number => {
+  const variant = getCardVariant(id);
+
+  // コストに応じた基本値（大きな差）
+  const baseByCost: Record<number, [number, number]> = {
+    0: [4, 8],    // コスト0: 4-8
+    1: [8, 14],   // コスト1: 8-14
+    2: [14, 22],  // コスト2: 14-22
+    3: [22, 35],  // コスト3: 22-35
+  };
+
+  const [min, max] = baseByCost[cost] || [8, 14];
+
+  // バリアントで範囲内の値を決定
+  const range = max - min;
+  const value = min + Math.floor((variant / 10) * range);
+
+  return value;
 };
 
-// カードタイプに応じた効果を生成
-const generateEffects = (basePower: number, type: CardType, rarity: number, name: string = '', category: string = ''): CardEffect[] => {
-  const value = calculateEffectValue(basePower, type);
+// カードタイプに応じた効果を生成（カードIDで特殊効果を決定）
+const generateEffects = (basePower: number, type: CardType, rarity: number, name: string = '', category: string = '', id: number = 0): CardEffect[] => {
+  const cost = calculateCost(basePower, type, name, category, id);
+  const value = calculateEffectValue(basePower, type, cost, id);
+  const variant = getCardVariant(id);
   const effects: CardEffect[] = [];
 
-  // 回復系カードの場合は回復効果を生成
+  // 回復系カードの場合
   if (isHealingCard(name, category)) {
-    const healValue = Math.floor(value * 0.8); // 回復量はダメージより若干低め
+    // 回復量はコストに比例（大きな差）
+    const healByCost: Record<number, number> = { 1: 8, 2: 18, 3: 30 };
+    const healValue = healByCost[cost] || 12;
+
     effects.push({
       type: 'heal',
-      value: Math.max(3, healValue),
+      value: healValue,
       target: 'self',
     });
-    // 高レアは追加で再生バフ
-    if (rarity >= 4) {
+
+    // バリアントで追加効果
+    if (variant >= 7) {
+      // 30%: 再生バフも付与
       effects.push({
         type: 'buff',
         value: 2,
         target: 'self',
         statusType: 'regeneration',
-        statusDuration: 2,
+        statusDuration: 3,
+      });
+    } else if (variant >= 4) {
+      // 30%: ブロックも付与
+      effects.push({
+        type: 'block',
+        value: Math.floor(healValue / 2),
+        target: 'self',
       });
     }
     return effects;
@@ -130,81 +167,191 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
 
   switch (type) {
     case 'attack':
-      // 攻撃カード：ダメージを与える
-      effects.push({
-        type: 'damage',
-        value: value,
-        target: 'enemy',
-      });
-      // 高レア攻撃はデバフも付与
-      if (rarity >= 4 && basePower >= 80) {
+      // 攻撃カードのバリエーション
+      if (variant < 2) {
+        // 20%: 全体攻撃（威力は低め）
+        effects.push({
+          type: 'damage',
+          value: Math.floor(value * 0.6),
+          target: 'all_enemies',
+        });
+      } else if (variant < 4) {
+        // 20%: デバフ付き攻撃
+        effects.push({
+          type: 'damage',
+          value: Math.floor(value * 0.8),
+          target: 'enemy',
+        });
+        effects.push({
+          type: 'debuff',
+          value: 2,
+          target: 'enemy',
+          statusType: 'vulnerable',
+          statusDuration: 2,
+        });
+      } else if (variant < 6) {
+        // 20%: 高威力（シンプル）
+        effects.push({
+          type: 'damage',
+          value: value,
+          target: 'enemy',
+        });
+      } else if (variant < 8) {
+        // 20%: 弱体化付き
+        effects.push({
+          type: 'damage',
+          value: Math.floor(value * 0.85),
+          target: 'enemy',
+        });
         effects.push({
           type: 'debuff',
           value: 1,
           target: 'enemy',
-          statusType: 'vulnerable',
+          statusType: 'weak',
           statusDuration: 2,
+        });
+      } else {
+        // 20%: 筋力バフ付き
+        effects.push({
+          type: 'damage',
+          value: Math.floor(value * 0.7),
+          target: 'enemy',
+        });
+        effects.push({
+          type: 'buff',
+          value: 2,
+          target: 'self',
+          statusType: 'strength',
         });
       }
       break;
 
     case 'defense':
-      // 防御カード：ブロックを得る
-      effects.push({
-        type: 'block',
-        value: value,
-        target: 'self',
-      });
-      // 高レア防御は追加効果
-      if (rarity >= 4 && basePower >= 80) {
+      // 防御カードのバリエーション
+      if (variant < 3) {
+        // 30%: 高ブロック
+        effects.push({
+          type: 'block',
+          value: value,
+          target: 'self',
+        });
+      } else if (variant < 5) {
+        // 20%: 中ブロック + 敏捷
+        effects.push({
+          type: 'block',
+          value: Math.floor(value * 0.7),
+          target: 'self',
+        });
         effects.push({
           type: 'buff',
-          value: 1,
+          value: 2,
           target: 'self',
           statusType: 'dexterity',
-          statusDuration: 1,
+          statusDuration: 2,
+        });
+      } else if (variant < 7) {
+        // 20%: ブロック + ドロー
+        effects.push({
+          type: 'block',
+          value: Math.floor(value * 0.6),
+          target: 'self',
+        });
+        effects.push({
+          type: 'draw',
+          value: 1,
+          target: 'self',
+        });
+      } else if (variant < 9) {
+        // 20%: ブロック + 反撃ダメージ
+        effects.push({
+          type: 'block',
+          value: Math.floor(value * 0.7),
+          target: 'self',
+        });
+        effects.push({
+          type: 'damage',
+          value: Math.floor(value * 0.3),
+          target: 'enemy',
+        });
+      } else {
+        // 10%: 敵を弱体化
+        effects.push({
+          type: 'block',
+          value: Math.floor(value * 0.5),
+          target: 'self',
+        });
+        effects.push({
+          type: 'debuff',
+          value: 2,
+          target: 'enemy',
+          statusType: 'weak',
+          statusDuration: 2,
         });
       }
       break;
 
     case 'skill':
-      // スキルカード：多様な効果
-      if (basePower >= 75) {
-        // 高パワースキル：ドロー + 小ダメージ
+      // スキルカードはさらに多様
+      if (variant < 2) {
+        // 20%: 大量ドロー
         effects.push({
           type: 'draw',
-          value: Math.min(3, Math.floor(basePower / 30)),
+          value: cost + 2,
           target: 'self',
         });
-        if (rarity >= 3) {
-          effects.push({
-            type: 'damage',
-            value: Math.floor(value / 2),
-            target: 'all_enemies',
-          });
-        }
-      } else if (basePower >= 50) {
-        // 中パワースキル：バフ
+      } else if (variant < 4) {
+        // 20%: エネルギー獲得 + ドロー
         effects.push({
-          type: 'buff',
-          value: Math.floor(basePower / 25),
+          type: 'energy',
+          value: 2,
           target: 'self',
-          statusType: 'strength',
         });
-      } else {
-        // 低パワースキル：ドロー + エネルギー
         effects.push({
           type: 'draw',
           value: 1,
           target: 'self',
         });
-        if (rarity >= 2) {
-          effects.push({
-            type: 'energy',
-            value: 1,
-            target: 'self',
-          });
-        }
+      } else if (variant < 6) {
+        // 20%: 大筋力バフ
+        effects.push({
+          type: 'buff',
+          value: cost + 2,
+          target: 'self',
+          statusType: 'strength',
+        });
+      } else if (variant < 8) {
+        // 20%: 敵全体にデバフ
+        effects.push({
+          type: 'debuff',
+          value: 2,
+          target: 'all_enemies',
+          statusType: 'vulnerable',
+          statusDuration: 2,
+        });
+        effects.push({
+          type: 'debuff',
+          value: 2,
+          target: 'all_enemies',
+          statusType: 'weak',
+          statusDuration: 2,
+        });
+      } else {
+        // 20%: 複合効果（小ダメージ + 小ブロック + ドロー）
+        effects.push({
+          type: 'damage',
+          value: 5 + cost * 3,
+          target: 'all_enemies',
+        });
+        effects.push({
+          type: 'block',
+          value: 5 + cost * 3,
+          target: 'self',
+        });
+        effects.push({
+          type: 'draw',
+          value: 1,
+          target: 'self',
+        });
       }
       break;
   }
@@ -276,8 +423,8 @@ const getStatusName = (statusType: string): string => {
 // 概念をカードに変換
 const convertConceptToCard = (concept: Concept): Card => {
   const type = getCategoryType(concept.category, concept.name);
-  const cost = calculateCost(concept.basePower, type, concept.name, concept.category);
-  const effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category);
+  const cost = calculateCost(concept.basePower, type, concept.name, concept.category, concept.id);
+  const effects = generateEffects(concept.basePower, type, concept.rarity, concept.name, concept.category, concept.id);
   const description = generateCardDescription(effects, type);
 
   return {
@@ -355,24 +502,43 @@ export const getRandomCardByRarity = (): Card => {
 };
 
 // 初期デッキを生成（10枚）
+// 500種類の概念から幅広く選択
 export const generateStarterDeck = (): Card[] => {
   const starterDeck: Card[] = [];
+  const usedIds = new Set<number>();
 
-  // 攻撃カード5枚（低〜中コスト）
-  const attackCards = getCardsByType('attack').filter(c => c.cost <= 1 && c.rarity <= 2);
+  // コスト2以下、レアリティ4以下のカードから選択（より広いプール）
+  const validCards = cards.filter(c => c.cost <= 2 && c.rarity <= 4);
+
+  // ユニークなカードを選択するヘルパー
+  const pickUnique = (pool: Card[]): Card => {
+    const available = pool.filter(c => !usedIds.has(c.id));
+    if (available.length === 0) {
+      // フォールバック: 重複許可
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    const card = available[Math.floor(Math.random() * available.length)];
+    usedIds.add(card.id);
+    return card;
+  };
+
+  // 攻撃カード5枚
+  const attackCards = validCards.filter(c => c.type === 'attack');
   for (let i = 0; i < 5; i++) {
-    starterDeck.push(attackCards[Math.floor(Math.random() * attackCards.length)]);
+    const card = pickUnique(attackCards);
+    starterDeck.push(card);
   }
 
-  // 防御カード4枚（低〜中コスト）
-  const defenseCards = getCardsByType('defense').filter(c => c.cost <= 1 && c.rarity <= 2);
+  // 防御カード4枚
+  const defenseCards = validCards.filter(c => c.type === 'defense');
   for (let i = 0; i < 4; i++) {
-    starterDeck.push(defenseCards[Math.floor(Math.random() * defenseCards.length)]);
+    const card = pickUnique(defenseCards);
+    starterDeck.push(card);
   }
 
-  // スキルカード1枚（低コスト）
-  const skillCards = getCardsByType('skill').filter(c => c.cost <= 1 && c.rarity <= 2);
-  starterDeck.push(skillCards[Math.floor(Math.random() * skillCards.length)]);
+  // スキルカード1枚
+  const skillCards = validCards.filter(c => c.type === 'skill');
+  starterDeck.push(pickUnique(skillCards));
 
   return starterDeck;
 };
