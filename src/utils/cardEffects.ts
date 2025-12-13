@@ -317,19 +317,19 @@ export const getCardDescription = (
 export const getStatusName = (statusType: string): string => {
   switch (statusType) {
     case 'strength':
-      return '筋力';
+      return '闘志';
     case 'dexterity':
-      return '敏捷';
+      return '克己';
     case 'vulnerable':
-      return '脆弱';
+      return '不安';
     case 'weak':
-      return '弱体';
+      return '躊躇';
     case 'frail':
-      return '衰弱';
+      return '倦怠';
     case 'poison':
-      return '毒';
+      return '苦悩';
     case 'regeneration':
-      return '再生';
+      return '調和';
     default:
       return statusType;
   }
@@ -339,9 +339,9 @@ export const getStatusName = (statusType: string): string => {
 export const getStatusDescription = (statusType: string): string => {
   switch (statusType) {
     case 'strength':
-      return '攻撃のダメージ+スタック数';
+      return '攻撃ダメージ+N';
     case 'dexterity':
-      return 'ブロック+スタック数';
+      return 'ブロック+N';
     case 'vulnerable':
       return '被ダメージ50%増加';
     case 'weak':
@@ -349,9 +349,9 @@ export const getStatusDescription = (statusType: string): string => {
     case 'frail':
       return 'ブロック25%減少';
     case 'poison':
-      return 'ターン終了時にスタック数分のダメージ';
+      return '毎ターン終了時ダメージ';
     case 'regeneration':
-      return 'ターン開始時にスタック数分の回復';
+      return '毎ターン開始時回復';
     default:
       return '';
   }

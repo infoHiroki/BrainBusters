@@ -164,15 +164,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <View style={styles.ruleBlock}>
               <Text style={styles.ruleTitle}>ステータス効果（バフ）</Text>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#2ECC71' }]}>筋力</Text>
+                <Text style={[styles.statusName, { color: '#2ECC71' }]}>闘志</Text>
                 <Text style={styles.statusDesc}>攻撃ダメージ +スタック数</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#2ECC71' }]}>敏捷</Text>
+                <Text style={[styles.statusName, { color: '#2ECC71' }]}>克己</Text>
                 <Text style={styles.statusDesc}>ブロック +スタック数</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#2ECC71' }]}>再生</Text>
+                <Text style={[styles.statusName, { color: '#2ECC71' }]}>調和</Text>
                 <Text style={styles.statusDesc}>ターン開始時にスタック数分HP回復</Text>
               </View>
             </View>
@@ -180,19 +180,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <View style={styles.ruleBlock}>
               <Text style={styles.ruleTitle}>ステータス効果（デバフ）</Text>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#E74C3C' }]}>脆弱</Text>
+                <Text style={[styles.statusName, { color: '#E74C3C' }]}>不安</Text>
                 <Text style={styles.statusDesc}>被ダメージ +50%</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#E74C3C' }]}>弱体</Text>
+                <Text style={[styles.statusName, { color: '#E74C3C' }]}>躊躇</Text>
                 <Text style={styles.statusDesc}>与ダメージ -25%</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#E74C3C' }]}>衰弱</Text>
+                <Text style={[styles.statusName, { color: '#E74C3C' }]}>倦怠</Text>
                 <Text style={styles.statusDesc}>ブロック -25%</Text>
               </View>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusName, { color: '#9B59B6' }]}>毒</Text>
+                <Text style={[styles.statusName, { color: '#9B59B6' }]}>苦悩</Text>
                 <Text style={styles.statusDesc}>ターン終了時にスタック数分ダメージ</Text>
               </View>
             </View>

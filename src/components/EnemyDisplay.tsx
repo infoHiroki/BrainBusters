@@ -257,13 +257,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
   statusBadgeText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   hpBarContainer: {

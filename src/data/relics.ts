@@ -89,7 +89,7 @@ export const relics: Relic[] = [
   {
     id: 8,
     name: '懐疑の灯',
-    description: '戦闘開始時、敵1体に脆弱1付与',
+    description: '戦闘開始時、敵1体に不安1付与',
     rarity: 'common',
     effects: [{
       trigger: 'battle_start',
@@ -223,7 +223,7 @@ export const relics: Relic[] = [
   {
     id: 19,
     name: '絶対精神の器',
-    description: '戦闘開始時、筋力+1',
+    description: '戦闘開始時、闘志+1',
     rarity: 'rare',
     effects: [{
       trigger: 'battle_start',
