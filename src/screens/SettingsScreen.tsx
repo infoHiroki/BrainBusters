@@ -120,6 +120,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
 
             <View style={styles.ruleBlock}>
+              <Text style={styles.ruleTitle}>手札とドロー</Text>
+              <Text style={styles.ruleText}>
+                • ターン開始時に手札を全て捨て、5枚ドロー{'\n'}
+                • ドローカードで引いた手札は{'\n'}
+                　そのターン中すぐに使用可能！{'\n'}
+                • 1ターンで多くのカードを使うチャンス
+              </Text>
+            </View>
+
+            <View style={styles.ruleBlock}>
               <Text style={styles.ruleTitle}>カードタイプ</Text>
               <View style={styles.cardTypeRow}>
                 <View style={[styles.badge, { backgroundColor: '#E74C3C' }]}>
@@ -283,8 +293,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a1a',
+    alignItems: 'center',
   },
   header: {
+    width: '100%',
+    maxWidth: 500,
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -306,6 +319,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
+    maxWidth: 500,
     paddingHorizontal: 20,
   },
   sectionHeader: {
@@ -387,17 +402,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   statLabel: {
-    color: '#888',
+    color: '#aaa',
     fontSize: 14,
   },
   statValue: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   // データ管理関連

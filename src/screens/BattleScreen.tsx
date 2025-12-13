@@ -533,6 +533,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* ターン終了ボタン */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[
+            styles.endTurnButtonInline,
+            (turnPhase !== 'player' || isProcessing) && styles.buttonDisabled,
+          ]}
+          onPress={handleEndTurn}
+          disabled={turnPhase !== 'player' || isProcessing}
+        >
+          <LinearGradient
+            colors={turnPhase !== 'player' || isProcessing ? ['#444', '#333'] : ['#8B4513', '#654321']}
+            style={styles.endTurnGradient}
+          >
+            <Text style={styles.endTurnText}>
+              {turnPhase === 'enemy' ? '敵ターン...' : 'ターン終了'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
       {/* 手札エリア */}
       <View style={styles.handArea}>
         {isSelectingTarget && (
@@ -558,25 +579,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           ))}
         </ScrollView>
       </View>
-
-      {/* ターン終了ボタン */}
-      <TouchableOpacity
-        style={[
-          styles.endTurnButton,
-          (turnPhase !== 'player' || isProcessing) && styles.buttonDisabled,
-        ]}
-        onPress={handleEndTurn}
-        disabled={turnPhase !== 'player' || isProcessing}
-      >
-        <LinearGradient
-          colors={turnPhase !== 'player' || isProcessing ? ['#444', '#333'] : ['#8B4513', '#654321']}
-          style={styles.endTurnGradient}
-        >
-          <Text style={styles.endTurnText}>
-            {turnPhase === 'enemy' ? '敵のターン...' : 'ターン終了'}
-          </Text>
-        </LinearGradient>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -585,6 +587,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a1a',
+    alignItems: 'center',
   },
   loadingText: {
     color: '#fff',
@@ -600,6 +603,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
+    width: '100%',
+    maxWidth: 500,
   },
   floorInfo: {
     backgroundColor: 'rgba(139, 69, 19, 0.8)',
@@ -629,32 +634,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 500,
   },
   enemyRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // メッセージ
+  // メッセージ（敵エリア内に表示）
   messageContainer: {
     position: 'absolute',
-    top: '30%',
-    left: 0,
-    right: 0,
+    top: '45%',
+    alignSelf: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
   messageText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
   },
   // フローティングダメージ
   floatingNumber: {
@@ -676,18 +684,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    width: '100%',
+    maxWidth: 500,
   },
   drawPileContainer: {
-    width: 70,
-    height: 90,
+    width: 60,
+    height: 80,
     borderRadius: 8,
     overflow: 'hidden',
   },
   discardPileContainer: {
-    width: 70,
-    height: 90,
+    width: 60,
+    height: 80,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  actionRow: {
+    width: '100%',
+    maxWidth: 500,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  endTurnButtonInline: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#654321',
   },
   pileGradient: {
     flex: 1,
@@ -699,7 +721,7 @@ const styles = StyleSheet.create({
   },
   pileCount: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
   },
   pileLabel: {
@@ -797,6 +819,8 @@ const styles = StyleSheet.create({
   handArea: {
     height: 200,
     paddingBottom: 16,
+    width: '100%',
+    maxWidth: 500,
   },
   handContainer: {
     flexDirection: 'row',
@@ -810,35 +834,25 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     position: 'absolute',
-    top: -40,
+    top: 4,
     alignSelf: 'center',
-    backgroundColor: 'rgba(192, 57, 43, 0.9)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(192, 57, 43, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
     zIndex: 10,
   },
   cancelText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
-  },
-  // ターン終了ボタン
-  endTurnButton: {
-    position: 'absolute',
-    bottom: 220,
-    right: 20,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#654321',
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   endTurnGradient: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
   },
   endTurnText: {
     color: '#fff',

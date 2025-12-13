@@ -114,11 +114,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a1a',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 400,
+    paddingHorizontal: 20,
   },
   titleContainer: {
     alignItems: 'center',

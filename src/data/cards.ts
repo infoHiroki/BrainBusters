@@ -219,7 +219,7 @@ const generateCardDescription = (effects: CardEffect[], type: CardType): string 
         descriptions.push(`${effect.value}ブロック`);
         break;
       case 'draw':
-        descriptions.push(`${effect.value}枚ドロー`);
+        descriptions.push(`即座に${effect.value}枚ドロー`);
         break;
       case 'energy':
         descriptions.push(`${effect.value}エネルギー獲得`);
