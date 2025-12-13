@@ -14,6 +14,10 @@ import { Card, StatusEffect } from '../types/game';
 import { getCardTypeColor, getCardTypeName, getCardDescription } from '../utils/cardEffects';
 import { getRarityColor } from '../data/concepts';
 
+// デフォルトカードサイズ
+const DEFAULT_CARD_WIDTH = 150;
+const DEFAULT_CARD_HEIGHT = 215;
+
 interface BattleCardProps {
   card: Card;
   onPress?: () => void;
@@ -21,6 +25,8 @@ interface BattleCardProps {
   selected?: boolean;
   playerStatuses?: StatusEffect[];
   scale?: Animated.Value;
+  cardWidth?: number;  // カスタムサイズ
+  cardHeight?: number;
 }
 
 export const BattleCard: React.FC<BattleCardProps> = ({
@@ -30,10 +36,15 @@ export const BattleCard: React.FC<BattleCardProps> = ({
   selected = false,
   playerStatuses = [],
   scale,
+  cardWidth = DEFAULT_CARD_WIDTH,
+  cardHeight = DEFAULT_CARD_HEIGHT,
 }) => {
   const typeColor = getCardTypeColor(card.type);
   const rarityColor = getRarityColor(card.rarity);
   const description = getCardDescription(card, playerStatuses);
+
+  // サイズ比率を計算（デフォルトサイズ150に対する比率）
+  const sizeRatio = cardWidth / 150;
 
   // カードタイプに応じたイラストエリアの背景
   const getArtGradient = (): [string, string, string] => {
@@ -104,56 +115,72 @@ export const BattleCard: React.FC<BattleCardProps> = ({
   const cardContent = (
     <View style={[
       styles.cardFrame,
-      disabled && styles.cardDisabled,
-      selected && styles.cardSelected,
       {
+        width: cardWidth,
+        height: cardHeight,
         borderColor: frameStyle.borderColor,
         shadowColor: frameStyle.shadowColor,
         shadowOpacity: frameStyle.shadowOpacity,
         shadowRadius: frameStyle.shadowRadius,
       },
+      disabled && styles.cardDisabled,
+      selected && styles.cardSelected,
     ]}>
       {/* カード内側 */}
       <View style={styles.cardInner}>
         {/* コストバッジ（左上に重ねて表示） */}
-        <View style={[styles.costBadge, { backgroundColor: typeColor }]}>
-          <Text style={styles.costText}>{card.cost}</Text>
+        <View style={[styles.costBadge, {
+          backgroundColor: typeColor,
+          width: 26 * sizeRatio,
+          height: 26 * sizeRatio,
+          borderRadius: 13 * sizeRatio,
+        }]}>
+          <Text style={[styles.costText, { fontSize: 14 * sizeRatio }]}>{card.cost}</Text>
         </View>
 
         {/* 強化済みバッジ（右上） */}
         {card.upgraded && (
-          <View style={styles.upgradedBadge}>
-            <Text style={styles.upgradedText}>+</Text>
+          <View style={[styles.upgradedBadge, {
+            width: 20 * sizeRatio,
+            height: 20 * sizeRatio,
+            borderRadius: 10 * sizeRatio,
+          }]}>
+            <Text style={[styles.upgradedText, { fontSize: 14 * sizeRatio }]}>+</Text>
           </View>
         )}
 
         {/* イラストエリア（将来画像を入れる場所） */}
         <LinearGradient
           colors={getArtGradient()}
-          style={styles.artArea}
+          style={[styles.artArea, { height: 70 * sizeRatio }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           {/* プレースホルダー: カテゴリアイコン的な表示 */}
-          <Text style={styles.artPlaceholder}>
+          <Text style={[styles.artPlaceholder, { fontSize: 36 * sizeRatio }]}>
             {card.type === 'attack' ? '⚔️' : card.type === 'defense' ? '🛡️' : '✨'}
           </Text>
         </LinearGradient>
 
         {/* カード名バナー */}
-        <View style={[styles.nameBanner, { backgroundColor: typeColor }]}>
-          <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+        <View style={[styles.nameBanner, {
+          backgroundColor: typeColor,
+          minHeight: 28 * sizeRatio,
+          paddingVertical: 3 * sizeRatio,
+          paddingHorizontal: 6 * sizeRatio,
+        }]}>
+          <Text style={[styles.cardName, { fontSize: 11 * sizeRatio }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
             {card.name}
           </Text>
         </View>
 
         {/* タイプ表示 */}
-        <View style={styles.typeRow}>
+        <View style={[styles.typeRow, { paddingVertical: 3 * sizeRatio }]}>
           <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-            <Text style={styles.typeText}>{getCardTypeName(card.type)}</Text>
+            <Text style={[styles.typeText, { fontSize: 9 * sizeRatio }]}>{getCardTypeName(card.type)}</Text>
           </View>
           <View style={[styles.rarityStars]}>
-            <Text style={[styles.rarityText, { color: rarityColor }]}>
+            <Text style={[styles.rarityText, { color: rarityColor, fontSize: 9 * sizeRatio }]}>
               {'★'.repeat(card.rarity)}
             </Text>
           </View>
@@ -161,7 +188,7 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 
         {/* 効果テキストエリア */}
         <View style={styles.effectArea}>
-          <Text style={styles.effectText} numberOfLines={3}>
+          <Text style={[styles.effectText, { fontSize: 10 * sizeRatio, lineHeight: 13 * sizeRatio }]} numberOfLines={3}>
             {description}
           </Text>
         </View>
@@ -196,19 +223,19 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 
 const styles = StyleSheet.create({
   cardFrame: {
-    width: 150,
-    height: 215,
+    // width/heightは動的に設定
     borderRadius: 12,
     borderWidth: 3,
     backgroundColor: '#1a1a2e',
     shadowOffset: { width: 0, height: 0 },
     elevation: 10,
+    overflow: 'hidden', // 内容がはみ出さないように
   },
   cardDisabled: {
     opacity: 0.4,
   },
   cardSelected: {
-    transform: [{ scale: 1.08 }, { translateY: -10 }],
+    // 拡大なし、枠の色で選択状態を示す
     elevation: 20,
   },
   cardInner: {

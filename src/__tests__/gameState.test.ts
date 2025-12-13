@@ -44,12 +44,12 @@ describe('RunState型の整合性', () => {
     currentNodeId: null,
     seed: 12345,
     startedAt: Date.now(),
-    stockCard: null,
+    stockCards: [],
   });
 
-  it('stockCardはnullまたはCardを受け入れる', () => {
+  it('stockCardsは配列でカードを複数枚保持できる', () => {
     const state = createMockRunState();
-    expect(state.stockCard).toBeNull();
+    expect(state.stockCards).toEqual([]);
 
     const mockCard: Card = {
       id: 1,
@@ -62,7 +62,14 @@ describe('RunState型の整合性', () => {
       rarity: 1,
     };
 
-    state.stockCard = mockCard;
-    expect(state.stockCard).toBe(mockCard);
+    state.stockCards.push(mockCard);
+    expect(state.stockCards.length).toBe(1);
+    expect(state.stockCards[0]).toBe(mockCard);
+
+    // 最大5枚まで追加可能
+    for (let i = 0; i < 4; i++) {
+      state.stockCards.push({ ...mockCard, id: i + 2 });
+    }
+    expect(state.stockCards.length).toBe(5);
   });
 });
