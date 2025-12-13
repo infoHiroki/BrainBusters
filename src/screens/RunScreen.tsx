@@ -253,35 +253,43 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
   if (phase === 'rest') {
     const healAmount = Math.floor(runState.maxHp * 0.3);
     return (
-      <View style={styles.container}>
+      <View style={styles.screenContainer}>
         <LinearGradient
           colors={['#0a0a1a', '#1a1a3e', '#0a0a1a']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.centerContent}>
+        {/* ヘッダー */}
+        <View style={styles.screenHeader}>
           <Text style={styles.phaseTitle}>休憩所</Text>
-          <Text style={styles.floorText}>{runState.floor}F</Text>
+          <Text style={styles.floorBadge}>{runState.floor}F</Text>
+        </View>
+        {/* コンテンツ */}
+        <View style={styles.screenContent}>
+          <Text style={styles.restEmoji}>🔥</Text>
           <View style={styles.restInfo}>
             <Text style={styles.restText}>
               焚き火で休息を取り、体力を回復できます
             </Text>
             <Text style={styles.healText}>
-              🔥 回復量: {healAmount} HP
+              回復量: +{healAmount} HP
             </Text>
             <Text style={styles.currentHpText}>
-              現在のHP: {runState.hp}/{runState.maxHp}
+              現在: {runState.hp}/{runState.maxHp}
             </Text>
           </View>
-          <TouchableOpacity style={styles.restButton} onPress={handleRest}>
+        </View>
+        {/* フッター（ボタン位置統一） */}
+        <View style={styles.screenFooter}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleRest}>
             <LinearGradient
               colors={['#e74c3c', '#c0392b']}
               style={styles.buttonGradient}
             >
-              <Text style={styles.buttonText}>休憩する</Text>
+              <Text style={styles.buttonText}>休憩する（+{healAmount} HP）</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.skipButton} onPress={handleProceed}>
-            <Text style={styles.skipText}>休憩せずに進む</Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleProceed}>
+            <Text style={styles.secondaryButtonText}>休憩せずに進む</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -291,21 +299,29 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
   // ショップ画面（簡易版）
   if (phase === 'shop') {
     return (
-      <View style={styles.container}>
+      <View style={styles.screenContainer}>
         <LinearGradient
           colors={['#0a0a1a', '#1a1a3e', '#0a0a1a']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.centerContent}>
+        {/* ヘッダー */}
+        <View style={styles.screenHeader}>
           <Text style={styles.phaseTitle}>ショップ</Text>
-          <Text style={styles.floorText}>{runState.floor}F</Text>
+          <Text style={styles.floorBadge}>{runState.floor}F</Text>
+        </View>
+        {/* コンテンツ */}
+        <View style={styles.screenContent}>
+          <Text style={styles.shopEmoji}>🏪</Text>
           <View style={styles.shopInfo}>
             <Text style={styles.goldDisplay}>💰 {runState.gold} ゴールド</Text>
             <Text style={styles.shopText}>
               （ショップ機能は開発中です）
             </Text>
           </View>
-          <TouchableOpacity style={styles.restButton} onPress={handleProceed}>
+        </View>
+        {/* フッター */}
+        <View style={styles.screenFooter}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleProceed}>
             <LinearGradient
               colors={['#6C5CE7', '#5849BE']}
               style={styles.buttonGradient}
@@ -322,22 +338,29 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
   if (phase === 'result') {
     const victory = runState.floor >= GAME_CONFIG.MAX_FLOOR && runState.hp > 0;
     return (
-      <View style={styles.container}>
+      <View style={styles.screenContainer}>
         <LinearGradient
           colors={victory ? ['#1a3a1a', '#0a2a0a', '#1a3a1a'] : ['#3a1a1a', '#2a0a0a', '#3a1a1a']}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.centerContent}>
+        {/* ヘッダー */}
+        <View style={styles.screenHeader}>
           <Text style={[styles.resultTitle, { color: victory ? '#2ecc71' : '#e74c3c' }]}>
-            {victory ? '勝利！' : '敗北...'}
+            {victory ? '🎉 勝利！' : '💀 敗北...'}
           </Text>
+        </View>
+        {/* コンテンツ */}
+        <View style={styles.screenContent}>
           <View style={styles.resultStats}>
-            <Text style={styles.statRow}>到達階: {runState.floor}F</Text>
-            <Text style={styles.statRow}>獲得ゴールド: {runState.gold}</Text>
-            <Text style={styles.statRow}>デッキ枚数: {runState.deck.length}</Text>
-            <Text style={styles.statRow}>レリック数: {runState.relics.length}</Text>
+            <Text style={styles.statRow}>📍 到達階: {runState.floor}F</Text>
+            <Text style={styles.statRow}>💰 獲得ゴールド: {runState.gold}</Text>
+            <Text style={styles.statRow}>🃏 デッキ枚数: {runState.deck.length}</Text>
+            <Text style={styles.statRow}>🏆 レリック数: {runState.relics.length}</Text>
           </View>
-          <TouchableOpacity style={styles.exitButton} onPress={onExit}>
+        </View>
+        {/* フッター */}
+        <View style={styles.screenFooter}>
+          <TouchableOpacity style={styles.primaryButton} onPress={onExit}>
             <LinearGradient
               colors={['#6C5CE7', '#5849BE']}
               style={styles.buttonGradient}
@@ -386,6 +409,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // 統一レイアウト用スタイル
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#0a0a1a',
+  },
+  screenHeader: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  screenContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  screenFooter: {
+    padding: 16,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
   loadingText: {
     color: '#888',
     fontSize: 16,
@@ -407,6 +453,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 8,
   },
+  floorBadge: {
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
   statusBar: {
     position: 'absolute',
     top: 50,
@@ -426,45 +478,67 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
+  },
+  restEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  shopEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
   },
   restInfo: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 12,
-    marginVertical: 20,
+    padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 300,
   },
   restText: {
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   healText: {
     color: '#e74c3c',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   currentHpText: {
     color: '#888',
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 8,
   },
   shopInfo: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 12,
-    marginVertical: 20,
+    padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 300,
   },
   goldDisplay: {
     color: '#f1c40f',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 12,
   },
   shopText: {
+    color: '#888',
+    fontSize: 14,
+  },
+  primaryButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  secondaryButton: {
+    marginTop: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
     color: '#888',
     fontSize: 14,
   },
@@ -484,6 +558,7 @@ const styles = StyleSheet.create({
   buttonGradient: {
     paddingHorizontal: 40,
     paddingVertical: 16,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
@@ -491,21 +566,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   resultTitle: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: 'bold',
-    marginBottom: 32,
   },
   resultStats: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     padding: 24,
-    borderRadius: 12,
-    marginBottom: 32,
-    minWidth: 200,
+    borderRadius: 16,
+    minWidth: 250,
   },
   statRow: {
     color: '#fff',
     fontSize: 16,
-    marginVertical: 4,
+    marginVertical: 6,
   },
   exitButton: {
     borderRadius: 12,
