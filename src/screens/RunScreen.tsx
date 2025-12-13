@@ -137,16 +137,18 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
 
   // 次のフロアへ
   const handleProceed = async () => {
-    if (!runState) return;
+    // AsyncStorageから最新状態を取得（競合状態を防ぐ）
+    const latestState = await loadRunState();
+    if (!latestState) return;
 
     // 最終フロアクリア
-    if (runState.floor >= GAME_CONFIG.MAX_FLOOR) {
-      await handleRunEnd(true, runState);
+    if (latestState.floor >= GAME_CONFIG.MAX_FLOOR) {
+      await handleRunEnd(true, latestState);
       return;
     }
 
     // 次の階へ
-    const updated = await advanceFloor(runState);
+    const updated = await advanceFloor(latestState);
     setRunState(updated);
 
     // 次のノードタイプに応じてフェーズを設定
@@ -172,14 +174,16 @@ export const RunScreen: React.FC<RunScreenProps> = ({ onExit, onStatsUpdate }) =
 
   // 休憩（HP回復）
   const handleRest = async () => {
-    if (!runState) return;
+    // AsyncStorageから最新状態を取得
+    const latestState = await loadRunState();
+    if (!latestState) return;
 
-    const healAmount = Math.floor(runState.maxHp * 0.3);
-    const updated = await healPlayer(runState, healAmount);
+    const healAmount = Math.floor(latestState.maxHp * 0.3);
+    const updated = await healPlayer(latestState, healAmount);
     setRunState(updated);
 
-    // 次の階へ
-    handleProceed();
+    // 次の階へ（updated状態は既にAsyncStorageに保存済み）
+    await handleProceed();
   };
 
   // ラン終了処理

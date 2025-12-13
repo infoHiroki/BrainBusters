@@ -1,7 +1,7 @@
 // 報酬画面
 // 戦闘勝利後のカード選択・報酬獲得
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -35,21 +35,33 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   onSkip,
   onTakeGold,
 }) => {
-  const [goldTaken, setGoldTaken] = useState(false);
-  const [cardTaken, setCardTaken] = useState(false);
+  const [goldTaken, setGoldTaken] = useState(true); // 自動取得
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null); // 選択中のカード（再選択可能）
   const [relicTaken, setRelicTaken] = useState(false);
 
-  // カード報酬を生成
-  const cardRewards = useMemo(() => {
-    return generateRewardCards(runState.floor);
-  }, [runState.floor]);
+  // ゴールド自動取得
+  useEffect(() => {
+    onTakeGold();
+  }, []);
 
-  // レリック報酬（ボス戦のみ）
-  const relicReward = useMemo(() => {
-    if (!isBossReward) return null;
-    const ownedRelicIds = runState.relics.map(r => r.id);
-    return getRandomRelicByRarity(ownedRelicIds);
-  }, [isBossReward, runState.relics]);
+  // カード報酬を生成（初回のみ）
+  const cardRewardsRef = useRef<Card[] | null>(null);
+  if (!cardRewardsRef.current) {
+    cardRewardsRef.current = generateRewardCards(runState.floor);
+  }
+  const cardRewards = cardRewardsRef.current;
+
+  // レリック報酬（ボス戦のみ、初回生成時に固定）
+  const relicRewardRef = useRef<Relic | null | undefined>(undefined);
+  if (relicRewardRef.current === undefined) {
+    if (isBossReward) {
+      const ownedRelicIds = runState.relics.map(r => r.id);
+      relicRewardRef.current = getRandomRelicByRarity(ownedRelicIds);
+    } else {
+      relicRewardRef.current = null;
+    }
+  }
+  const relicReward = relicRewardRef.current;
 
   const handleTakeGold = () => {
     if (goldTaken) return;
@@ -57,16 +69,28 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
     onTakeGold();
   };
 
-  const handleSelectCard = (card: Card) => {
-    if (cardTaken) return;
-    setCardTaken(true);
-    onSelectCard(card);
+  // カードタップ → 選択（まだ確定しない、再選択可能）
+  const handleCardSelect = (card: Card) => {
+    // 同じカードをタップしたら選択解除
+    if (selectedCard && selectedCard.id === card.id) {
+      setSelectedCard(null);
+    } else {
+      setSelectedCard(card);
+    }
   };
 
   const handleSelectRelic = () => {
     if (relicTaken || !relicReward || !onSelectRelic) return;
     setRelicTaken(true);
     onSelectRelic(relicReward);
+  };
+
+  // 「次の階へ進む」ボタン押下時にカードを確定
+  const handleProceed = () => {
+    if (selectedCard) {
+      onSelectCard(selectedCard);
+    }
+    onSkip();
   };
 
   const canProceed = goldTaken;
@@ -87,43 +111,39 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* ゴールド報酬 */}
+        {/* ゴールド報酬（自動取得） */}
         <View style={styles.rewardSection}>
-          <Text style={styles.sectionTitle}>ゴールド</Text>
-          <TouchableOpacity
-            style={[styles.goldReward, goldTaken && styles.rewardTaken]}
-            onPress={handleTakeGold}
-            disabled={goldTaken}
-          >
-            <Text style={styles.goldText}>💰 {goldReward} ゴールド</Text>
-            {goldTaken && <Text style={styles.takenText}>獲得済み</Text>}
-          </TouchableOpacity>
+          <View style={styles.goldRewardAuto}>
+            <Text style={styles.goldText}>💰 +{goldReward} ゴールド獲得！</Text>
+          </View>
         </View>
 
         {/* カード報酬 */}
         <View style={styles.rewardSection}>
-          <Text style={styles.sectionTitle}>カードを1枚選択（任意）</Text>
+          <Text style={styles.sectionTitle}>カードを1枚選択（任意・再選択可）</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.cardRow}
           >
-            {cardRewards.map((card, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.cardReward, cardTaken && styles.rewardTaken]}
-                onPress={() => handleSelectCard(card)}
-                disabled={cardTaken}
-              >
-                <BattleCard card={card} disabled={cardTaken} />
-                <View style={[styles.rarityIndicator, { backgroundColor: getRarityColor(card.rarity) }]}>
-                  <Text style={styles.rarityText}>{'★'.repeat(card.rarity)}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {cardRewards.map((card, index) => {
+              const isSelected = selectedCard !== null && selectedCard.id === card.id;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.cardReward, isSelected && styles.cardSelected]}
+                  onPress={() => handleCardSelect(card)}
+                >
+                  <BattleCard card={card} selected={isSelected} />
+                  <View style={[styles.rarityIndicator, { backgroundColor: getRarityColor(card.rarity) }]}>
+                    <Text style={styles.rarityText}>{'★'.repeat(card.rarity)}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
-          {cardTaken && (
-            <Text style={styles.takenMessage}>カードをデッキに追加しました</Text>
+          {selectedCard && (
+            <Text style={styles.selectedMessage}>「{selectedCard.name}」を選択中（進むボタンで確定）</Text>
           )}
         </View>
 
@@ -156,7 +176,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.proceedButton, !canProceed && styles.buttonDisabled]}
-          onPress={onSkip}
+          onPress={handleProceed}
           disabled={!canProceed}
         >
           <LinearGradient
@@ -164,7 +184,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {runState.floor >= 15 ? 'クリア！' : '次の階へ進む'}
+              {runState.floor >= 15 ? 'クリア！' : selectedCard ? `${selectedCard.name}を獲得して進む` : '次の階へ進む'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -224,17 +244,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  goldReward: {
-    backgroundColor: 'rgba(241, 196, 15, 0.2)',
-    padding: 16,
+  goldRewardAuto: {
+    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+    padding: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#f1c40f',
+    borderColor: '#2ecc71',
     alignItems: 'center',
   },
   goldText: {
-    color: '#f1c40f',
-    fontSize: 20,
+    color: '#2ecc71',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   rewardTaken: {
@@ -254,6 +274,9 @@ const styles = StyleSheet.create({
   cardReward: {
     alignItems: 'center',
   },
+  cardSelected: {
+    transform: [{ scale: 1.05 }],
+  },
   rarityIndicator: {
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -264,11 +287,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
   },
-  takenMessage: {
-    color: '#2ecc71',
-    fontSize: 12,
+  selectedMessage: {
+    color: '#FFD700',
+    fontSize: 13,
     textAlign: 'center',
     marginTop: 8,
+    fontWeight: 'bold',
   },
   relicReward: {
     flexDirection: 'row',
