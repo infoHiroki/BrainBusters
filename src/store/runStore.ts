@@ -13,7 +13,7 @@ import {
   StatusEffect,
   GAME_CONFIG,
 } from '../types/game';
-import { generateStarterDeck, getCardById, cards } from '../data/cards';
+import { generateStarterDeck, getCardById, cards, upgradeCard } from '../data/cards';
 import { generateEnemyGroup, selectNextIntent } from '../data/enemies';
 
 const RUN_STORAGE_KEY = 'BRAIN_BUSTERS_CURRENT_RUN';
@@ -550,6 +550,42 @@ export const healPlayer = async (
   const newState: RunState = {
     ...latestState,
     hp: Math.min(latestState.maxHp, latestState.hp + amount),
+  };
+  await saveRunState(newState);
+  return newState;
+};
+
+// カードを強化
+export const upgradeCardInDeck = async (
+  _runState: RunState,
+  cardInstanceId: string
+): Promise<RunState> => {
+  // 最新のstateを読み込んで競合を防ぐ
+  const latestState = await loadRunState();
+  if (!latestState) return _runState;
+
+  // 対象カードを探す
+  const targetIndex = latestState.deck.findIndex(c => c.instanceId === cardInstanceId);
+  if (targetIndex === -1) return latestState;
+
+  const targetCard = latestState.deck[targetIndex];
+
+  // 既に強化済みならそのまま返す
+  if (targetCard.card.upgraded) return latestState;
+
+  // カードを強化
+  const upgradedCard = upgradeCard(targetCard.card);
+
+  // デッキを更新
+  const newDeck = [...latestState.deck];
+  newDeck[targetIndex] = {
+    ...targetCard,
+    card: upgradedCard,
+  };
+
+  const newState: RunState = {
+    ...latestState,
+    deck: newDeck,
   };
   await saveRunState(newState);
   return newState;

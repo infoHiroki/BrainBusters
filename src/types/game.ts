@@ -43,6 +43,7 @@ export interface Card {
   category: string;         // 既存カテゴリ
   rarity: 1 | 2 | 3 | 4 | 5;
   flavorText?: string;      // フレーバーテキスト
+  upgraded?: boolean;       // 強化済みフラグ
 }
 
 // カードインスタンス（デッキ内の個別カード）

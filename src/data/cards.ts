@@ -446,3 +446,60 @@ export const cardStats = {
     5: getCardsByRarity(5).length,
   },
 };
+
+// カードを強化する
+// 効果値+25%、コスト0のカードはそのまま、コスト1以上は稀にコスト-1
+export const upgradeCard = (card: Card): Card => {
+  if (card.upgraded) {
+    return card; // 既に強化済み
+  }
+
+  // 効果を強化（ダメージ/ブロック/回復を+25%、ドローは+1）
+  const upgradedEffects: CardEffect[] = card.effects.map(effect => {
+    const newEffect = { ...effect };
+
+    switch (effect.type) {
+      case 'damage':
+      case 'block':
+      case 'heal':
+        // +25%（最低+2）
+        newEffect.value = effect.value + Math.max(2, Math.floor(effect.value * 0.25));
+        break;
+      case 'draw':
+        // ドローは+1
+        newEffect.value = effect.value + 1;
+        break;
+      case 'buff':
+      case 'debuff':
+        // バフ/デバフは+1スタック
+        newEffect.value = effect.value + 1;
+        break;
+      case 'energy':
+        // エネルギーは+1
+        newEffect.value = effect.value + 1;
+        break;
+    }
+
+    return newEffect;
+  });
+
+  // コスト軽減（コスト2以上で30%の確率、コスト3以上で50%の確率）
+  let newCost = card.cost;
+  if (card.cost >= 3) {
+    newCost = card.cost - 1;
+  } else if (card.cost === 2 && Math.random() < 0.3) {
+    newCost = 1;
+  }
+
+  // 説明文を再生成
+  const newDescription = generateCardDescription(upgradedEffects, card.type);
+
+  return {
+    ...card,
+    name: card.name + '+',
+    cost: newCost,
+    effects: upgradedEffects,
+    description: newDescription,
+    upgraded: true,
+  };
+};
