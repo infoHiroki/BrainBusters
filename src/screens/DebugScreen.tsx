@@ -30,10 +30,45 @@ interface BattleResult {
   enemiesDefeated: number;
 }
 
+// テストプリセット
+interface TestPreset {
+  id: number;
+  name: string;
+  category: 'battle' | 'reward' | 'ui' | 'flow';
+  testMode: TestMode;
+  nodeType: 'battle' | 'elite' | 'boss';
+  floor: number;
+  enemyCount: number;
+  hp: number;
+  stockCount: number;
+  description: string;
+}
+
+// プリセットシナリオ一覧
+const TEST_PRESETS: TestPreset[] = [
+  // バトルテスト
+  { id: 1, name: '通常バトル基本', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '1階/敵1体/HP満タン/ストック0' },
+  { id: 2, name: '通常バトル敵3体', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 25, enemyCount: 3, hp: 70, stockCount: 0, description: '25階/敵3体/HP満タン/ストック0' },
+  { id: 3, name: '高難度+ストック満杯', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 45, enemyCount: 3, hp: 10, stockCount: 5, description: '45階/敵3体/HP瀕死/ストック5' },
+  { id: 4, name: 'エリート2体', category: 'battle', testMode: 'battle', nodeType: 'elite', floor: 20, enemyCount: 2, hp: 35, stockCount: 3, description: '20階/敵2体/HP半分/ストック3' },
+  { id: 5, name: '序盤ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: '5階ボス/HP満タン/ストック0' },
+  { id: 6, name: '中盤ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 35, stockCount: 3, description: '25階ボス/HP半分/ストック3' },
+  { id: 7, name: '最終ボス極限', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 10, stockCount: 5, description: '50階ボス/HP瀕死/ストック5' },
+  // 報酬画面テスト
+  { id: 8, name: 'ストック空→追加', category: 'reward', testMode: 'reward', nodeType: 'battle', floor: 10, enemyCount: 1, hp: 70, stockCount: 0, description: '通常報酬/ストック0' },
+  { id: 9, name: 'ストック一部→追加', category: 'reward', testMode: 'reward', nodeType: 'battle', floor: 10, enemyCount: 1, hp: 70, stockCount: 3, description: '通常報酬/ストック3' },
+  { id: 10, name: 'ストック満杯→入替', category: 'reward', testMode: 'reward', nodeType: 'battle', floor: 10, enemyCount: 1, hp: 70, stockCount: 5, description: '通常報酬/ストック5' },
+  { id: 11, name: 'エリート報酬+満杯', category: 'reward', testMode: 'reward', nodeType: 'elite', floor: 15, enemyCount: 1, hp: 70, stockCount: 5, description: 'エリート報酬/ストック5' },
+  { id: 12, name: 'ボス報酬+レリック', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: '5階ボス報酬/ストック0' },
+  { id: 13, name: 'ボス報酬複合', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 70, stockCount: 5, description: '25階ボス報酬/ストック5' },
+  { id: 14, name: '最終ボス報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 70, stockCount: 0, description: '50階ボス報酬' },
+];
+
 export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   const [phase, setPhase] = useState<DebugPhase>('menu');
   const [runState, setRunState] = useState<RunState | null>(null);
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
+  const [showPresets, setShowPresets] = useState<boolean>(true);
 
   // === 設定項目 ===
   const [testMode, setTestMode] = useState<TestMode>('battle');
@@ -46,6 +81,16 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
 
   // バトル専用設定
   const [enemyCount, setEnemyCount] = useState<number>(1);
+
+  // プリセットを適用
+  const applyPreset = (preset: TestPreset) => {
+    setTestMode(preset.testMode);
+    setNodeType(preset.nodeType);
+    setFloor(preset.floor);
+    setEnemyCount(preset.enemyCount);
+    setHp(preset.hp);
+    setStockCount(preset.stockCount);
+  };
 
   // ボス名を取得
   const getBossName = (bossFloor: number): string => {
@@ -151,7 +196,59 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               <Text style={styles.backText}>← タイトルへ</Text>
             </TouchableOpacity>
             <Text style={styles.title}>🛠️ デバッグモード</Text>
-            <Text style={styles.subtitle}>設定を選択してテスト開始</Text>
+            <Text style={styles.subtitle}>プリセットから選択 or カスタム設定</Text>
+          </View>
+
+          {/* プリセット選択 */}
+          <View style={styles.presetSection}>
+            <TouchableOpacity
+              style={styles.presetHeader}
+              onPress={() => setShowPresets(!showPresets)}
+            >
+              <Text style={styles.presetTitle}>📋 テストプリセット（{TEST_PRESETS.length}件）</Text>
+              <Text style={styles.presetToggle}>{showPresets ? '▼' : '▶'}</Text>
+            </TouchableOpacity>
+
+            {showPresets && (
+              <View style={styles.presetList}>
+                {/* バトルテスト */}
+                <Text style={styles.presetCategory}>⚔️ バトルテスト</Text>
+                {TEST_PRESETS.filter(p => p.category === 'battle').map(preset => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={styles.presetItem}
+                    onPress={() => applyPreset(preset)}
+                  >
+                    <View style={styles.presetInfo}>
+                      <Text style={styles.presetName}>{preset.id}. {preset.name}</Text>
+                      <Text style={styles.presetDesc}>{preset.description}</Text>
+                    </View>
+                    <Text style={styles.presetArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+
+                {/* 報酬画面テスト */}
+                <Text style={styles.presetCategory}>🎁 報酬画面テスト</Text>
+                {TEST_PRESETS.filter(p => p.category === 'reward').map(preset => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={styles.presetItem}
+                    onPress={() => applyPreset(preset)}
+                  >
+                    <View style={styles.presetInfo}>
+                      <Text style={styles.presetName}>{preset.id}. {preset.name}</Text>
+                      <Text style={styles.presetDesc}>{preset.description}</Text>
+                    </View>
+                    <Text style={styles.presetArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* カスタム設定セクション */}
+          <View style={styles.customSection}>
+            <Text style={styles.customTitle}>⚙️ カスタム設定</Text>
           </View>
 
           {/* テストモード選択 */}
@@ -515,6 +612,78 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 14,
     marginTop: 4,
+  },
+  // プリセット選択
+  presetSection: {
+    marginBottom: 16,
+    backgroundColor: 'rgba(100, 200, 150, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 200, 150, 0.3)',
+    overflow: 'hidden',
+  },
+  presetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(100, 200, 150, 0.15)',
+  },
+  presetTitle: {
+    color: '#8fdfb0',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  presetToggle: {
+    color: '#8fdfb0',
+    fontSize: 14,
+  },
+  presetList: {
+    padding: 8,
+  },
+  presetCategory: {
+    color: '#aaa',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 8,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  presetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  presetInfo: {
+    flex: 1,
+  },
+  presetName: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  presetDesc: {
+    color: '#888',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  presetArrow: {
+    color: '#6a8',
+    fontSize: 18,
+    marginLeft: 8,
+  },
+  // カスタム設定
+  customSection: {
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  customTitle: {
+    color: '#aaccff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   section: {
     marginBottom: 16,
