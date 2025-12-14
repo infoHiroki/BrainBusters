@@ -229,7 +229,8 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   if (phase === 'menu') {
     const mainAreaWidth = SCREEN_WIDTH - SIDEBAR_WIDTH;
     const mainAreaHeight = SCREEN_HEIGHT;
-    const effectCenterX = mainAreaWidth / 2;
+    // サイドバーのオフセットを加算して中心位置を計算
+    const effectCenterX = SIDEBAR_WIDTH + (mainAreaWidth / 2);
     const effectCenterY = mainAreaHeight / 2 - 50;
 
     return (
