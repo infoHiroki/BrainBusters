@@ -13,7 +13,16 @@ export type EffectType =
   | 'energy'      // エネルギーを得る
   | 'heal'        // HPを回復
   | 'buff'        // バフを付与
-  | 'debuff';     // デバフを付与
+  | 'debuff'      // デバフを付与
+  | 'self_damage'; // 自分にダメージ（HPコスト）
+
+// カード使用条件
+export type PlayCondition =
+  | 'hp_below_50'   // HP50%以下で使用可能/効果増加
+  | 'hp_above_50'   // HP50%以上で使用可能/効果増加
+  | 'no_block'      // ブロック0で効果増加
+  | 'has_status'    // バフ/デバフがある時効果増加
+  | 'low_hp';       // HP30%以下で大幅強化
 
 // バフ/デバフの種類
 export type StatusType =
@@ -32,6 +41,7 @@ export interface CardEffect {
   target?: 'self' | 'enemy' | 'all_enemies';
   statusType?: StatusType;  // buff/debuff時に使用
   statusDuration?: number;  // ステータス効果の持続ターン
+  randomRange?: [number, number];  // ギャンブル効果: [min, max]
 }
 
 // カード（ゲーム中で使用）
@@ -47,6 +57,9 @@ export interface Card {
   flavorText?: string;      // フレーバーテキスト
   upgraded?: boolean;       // 強化済みフラグ
   tags?: CardTags;          // タグ情報（著者、カテゴリ、著作）
+  playCondition?: PlayCondition;  // 使用条件（満たすと効果増加）
+  conditionBonus?: number;        // 条件達成時のボーナス倍率（1.5 = 50%増）
+  isGamble?: boolean;             // ギャンブルカードフラグ
 }
 
 // カードインスタンス（デッキ内の個別カード）

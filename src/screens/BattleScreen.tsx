@@ -477,8 +477,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (!battleState) return;
 
     // 使用可能かチェック
-    if (!canPlayCard(card, energy, battleState.enemies)) {
-      showMessage('エネルギー不足！', 'center');
+    if (!canPlayCard(card, energy, battleState.enemies, hp)) {
+      showMessage('使用できません！', 'center');
       return;
     }
 
@@ -541,8 +541,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (!stockCard) return;
 
     // 使用可能かチェック
-    if (!canPlayCard(stockCard, energy, battleState.enemies)) {
-      showMessage('エネルギー不足！', 'center');
+    if (!canPlayCard(stockCard, energy, battleState.enemies, hp)) {
+      showMessage('使用できません！', 'center');
       return;
     }
 
@@ -578,7 +578,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       card,
       { ...battleState, playerBlock },
       enemyIndex,
-      currentRunState.relics
+      currentRunState.relics,
+      hp,
+      currentRunState.maxHp
     );
 
     // フローティングダメージを表示
@@ -630,6 +632,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (result.healAmount > 0) {
       addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
       setHp(prev => Math.min(currentRunState.maxHp, prev + result.healAmount));
+    }
+
+    // HPコスト（自傷ダメージ）
+    if (result.selfDamage > 0) {
+      addFloatingNumber(result.selfDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      setHp(prev => Math.max(1, prev - result.selfDamage)); // 最低1HP残す
+      showMessage(`💔 ${card.name}: HP-${result.selfDamage}！`);
     }
 
     // バフ・デバフエフェクト
@@ -719,7 +728,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       card,
       { ...battleState, playerBlock },
       enemyIndex,
-      runState.relics
+      runState.relics,
+      hp,
+      runState.maxHp
     );
 
     // ステータス効果のボーナスを取得
@@ -789,6 +800,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (result.healAmount > 0) {
       addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
       setHp(prev => Math.min(runState.maxHp, prev + result.healAmount));
+    }
+
+    // HPコスト（自傷ダメージ）
+    if (result.selfDamage > 0) {
+      addFloatingNumber(result.selfDamage, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      setHp(prev => Math.max(1, prev - result.selfDamage));
+      showMessage(`💔 ${card.name}: HP-${result.selfDamage}！`);
     }
 
     // バフ・デバフエフェクト
@@ -864,13 +882,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // 手札から打てるカードがあるかチェック
     const canPlayHandCard = currentHand.some(cardInst => {
       const card = cardInst.card;
-      return card.cost <= currentEnergy && canPlayCard(card, currentEnergy, enemies);
+      return card.cost <= currentEnergy && canPlayCard(card, currentEnergy, enemies, hp);
     });
 
     // ストックから打てるカードがあるかチェック
     const canPlayStockCard = currentRunState.stockCards.some((stockCard, index) => {
       if (currentUsedStockIndices.includes(index)) return false;
-      return stockCard.cost <= currentEnergy && canPlayCard(stockCard, currentEnergy, enemies);
+      return stockCard.cost <= currentEnergy && canPlayCard(stockCard, currentEnergy, enemies, hp);
     });
 
     // 手札もストックも打てるカードがなければターン終了
@@ -1476,7 +1494,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           >
             {currentRunState.stockCards.map((stockCard, index) => {
               if (usedStockIndices.includes(index)) return null;
-              const canPlay = canPlayCard(stockCard, energy, battleState.enemies);
+              const canPlay = canPlayCard(stockCard, energy, battleState.enemies, hp);
               return (
                 <BattleCard
                   key={`stock-${index}`}
@@ -1509,7 +1527,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
               key={cardInstance.instanceId}
               card={cardInstance.card}
               onPress={() => handleCardSelect(index)}
-              disabled={!canPlayCard(cardInstance.card, energy, battleState.enemies) || turnPhase !== 'player' || isProcessing}
+              disabled={!canPlayCard(cardInstance.card, energy, battleState.enemies, hp) || turnPhase !== 'player' || isProcessing}
               selected={selectedCardIndex === index}
               playerStatuses={battleState.playerStatuses}
             />

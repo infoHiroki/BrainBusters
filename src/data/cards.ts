@@ -1,7 +1,7 @@
 // カードデータ変換
 // 既存の500枚の概念カードをバトル用カードに変換
 
-import { Card, CardType, CardEffect, StatusType } from '../types/game';
+import { Card, CardType, CardEffect, StatusType, PlayCondition } from '../types/game';
 import { CardTags, CardCategory } from '../types/tags';
 import conceptsData from './concepts.json';
 
@@ -1211,4 +1211,358 @@ export const upgradeCard = (card: Card): Card => {
     description: newDescription,
     upgraded: true,
   };
+};
+
+// ========================================
+// リスク/リターンカード（Phase 4）
+// ========================================
+
+// HPコストカード: HP消費で強力効果
+// HP70基準で25-35%のHPを消費するハイリスク設計
+const hpCostCards: Card[] = [
+  {
+    id: 1001,
+    name: '血の契約',
+    description: 'HP25消費。150ダメージ',
+    type: 'attack',
+    cost: 2,
+    effects: [
+      { type: 'self_damage', value: 25, target: 'self' },
+      { type: 'damage', value: 150, target: 'enemy' },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '力を得るには代償が必要だ',
+  },
+  {
+    id: 1002,
+    name: '命を燃やす',
+    description: 'HP20消費。全体に100ダメージ',
+    type: 'attack',
+    cost: 3,
+    effects: [
+      { type: 'self_damage', value: 20, target: 'self' },
+      { type: 'damage', value: 100, target: 'all_enemies' },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '燃え尽きるまで戦え',
+  },
+  {
+    id: 1003,
+    name: '捨身の守り',
+    description: 'HP18消費。90ブロック獲得',
+    type: 'defense',
+    cost: 2,
+    effects: [
+      { type: 'self_damage', value: 18, target: 'self' },
+      { type: 'block', value: 90, target: 'self' },
+    ],
+    category: 'risk_reward',
+    rarity: 3,
+    flavorText: '身を削って守る',
+  },
+  {
+    id: 1004,
+    name: '血の代償',
+    description: 'HP22消費。闘志+6、克己+5',
+    type: 'skill',
+    cost: 2,
+    effects: [
+      { type: 'self_damage', value: 22, target: 'self' },
+      { type: 'buff', value: 6, target: 'self', statusType: 'strength' },
+      { type: 'buff', value: 5, target: 'self', statusType: 'dexterity', statusDuration: 3 },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '痛みが力を呼び覚ます',
+  },
+];
+
+// 条件付きカード: HP状態で効果変動
+const conditionalCards: Card[] = [
+  {
+    id: 1011,
+    name: '背水の陣',
+    description: '50ダメージ。HP50%以下なら100ダメージ',
+    type: 'attack',
+    cost: 3,
+    effects: [
+      { type: 'damage', value: 50, target: 'enemy' },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '追い詰められた時こそ真価を発揮する',
+    playCondition: 'hp_below_50',
+    conditionBonus: 2.0,
+  },
+  {
+    id: 1012,
+    name: '死中求活',
+    description: '30ブロック。HP30%以下なら90ブロック',
+    type: 'defense',
+    cost: 2,
+    effects: [
+      { type: 'block', value: 30, target: 'self' },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '死線を超えた者だけが得る守り',
+    playCondition: 'low_hp',
+    conditionBonus: 3.0,
+  },
+  {
+    id: 1013,
+    name: '余裕の一撃',
+    description: '40ダメージ。HP50%以上なら80ダメージ',
+    type: 'attack',
+    cost: 2,
+    effects: [
+      { type: 'damage', value: 40, target: 'enemy' },
+    ],
+    category: 'risk_reward',
+    rarity: 3,
+    flavorText: '余力があるからこそ放てる一撃',
+    playCondition: 'hp_above_50',
+    conditionBonus: 2.0,
+  },
+  {
+    id: 1014,
+    name: '窮鼠の反撃',
+    description: '全体40ダメージ。HP30%以下なら全体100ダメージ',
+    type: 'attack',
+    cost: 4,
+    effects: [
+      { type: 'damage', value: 40, target: 'all_enemies' },
+    ],
+    category: 'risk_reward',
+    rarity: 5,
+    flavorText: '追い詰められた鼠が猫を噛む',
+    playCondition: 'low_hp',
+    conditionBonus: 2.5,
+  },
+];
+
+// ギャンブルカード: ランダム効果
+const gambleCards: Card[] = [
+  {
+    id: 1021,
+    name: '運命の賽',
+    description: '20〜100ダメージ（ランダム）',
+    type: 'attack',
+    cost: 2,
+    effects: [
+      { type: 'damage', value: 60, target: 'enemy', randomRange: [20, 100] },
+    ],
+    category: 'risk_reward',
+    rarity: 3,
+    flavorText: '運命は気まぐれだ',
+    isGamble: true,
+  },
+  {
+    id: 1022,
+    name: '博打の構え',
+    description: '10〜80ブロック（ランダム）',
+    type: 'defense',
+    cost: 2,
+    effects: [
+      { type: 'block', value: 45, target: 'self', randomRange: [10, 80] },
+    ],
+    category: 'risk_reward',
+    rarity: 3,
+    flavorText: '守りも賭けの対象',
+    isGamble: true,
+  },
+  {
+    id: 1023,
+    name: '大博打',
+    description: '0〜200ダメージ（ランダム）',
+    type: 'attack',
+    cost: 4,
+    effects: [
+      { type: 'damage', value: 100, target: 'enemy', randomRange: [0, 200] },
+    ],
+    category: 'risk_reward',
+    rarity: 5,
+    flavorText: '一か八か、全てを賭けろ',
+    isGamble: true,
+  },
+  {
+    id: 1024,
+    name: '幸運の風',
+    description: '1〜5枚ドロー + 0〜3エネルギー（ランダム）',
+    type: 'skill',
+    cost: 1,
+    effects: [
+      { type: 'draw', value: 3, target: 'self', randomRange: [1, 5] },
+      { type: 'energy', value: 1, target: 'self', randomRange: [0, 3] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '風は気まぐれ',
+    isGamble: true,
+  },
+  {
+    id: 1025,
+    name: '二律背反',
+    description: '50〜150ダメージ + HP5〜20消費（ランダム）',
+    type: 'attack',
+    cost: 3,
+    effects: [
+      { type: 'damage', value: 100, target: 'enemy', randomRange: [50, 150] },
+      { type: 'self_damage', value: 12, target: 'self', randomRange: [5, 20] },
+    ],
+    category: 'risk_reward',
+    rarity: 5,
+    flavorText: 'リスクとリターンは表裏一体',
+    isGamble: true,
+  },
+  {
+    id: 1026,
+    name: '混沌の渦',
+    description: '全体15〜70ダメージ（ランダム）',
+    type: 'attack',
+    cost: 3,
+    effects: [
+      { type: 'damage', value: 42, target: 'all_enemies', randomRange: [15, 70] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '混沌は平等に訪れる',
+    isGamble: true,
+  },
+  {
+    id: 1027,
+    name: '気まぐれな加護',
+    description: '0〜50ブロック + 0〜20回復（ランダム）',
+    type: 'defense',
+    cost: 2,
+    effects: [
+      { type: 'block', value: 25, target: 'self', randomRange: [0, 50] },
+      { type: 'heal', value: 10, target: 'self', randomRange: [0, 20] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '神は気まぐれだ',
+    isGamble: true,
+  },
+  {
+    id: 1028,
+    name: '不確定の力',
+    description: '闘志0〜5獲得（ランダム）',
+    type: 'skill',
+    cost: 1,
+    effects: [
+      { type: 'buff', value: 2, target: 'self', statusType: 'strength', randomRange: [0, 5] },
+    ],
+    category: 'risk_reward',
+    rarity: 3,
+    flavorText: '力は不確かなもの',
+    isGamble: true,
+  },
+  {
+    id: 1029,
+    name: '運試し',
+    description: '30〜120ダメージ + 0〜40ブロック（ランダム）',
+    type: 'attack',
+    cost: 3,
+    effects: [
+      { type: 'damage', value: 75, target: 'enemy', randomRange: [30, 120] },
+      { type: 'block', value: 20, target: 'self', randomRange: [0, 40] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '攻防どちらに転ぶか',
+    isGamble: true,
+  },
+  {
+    id: 1030,
+    name: '偶然の連鎖',
+    description: '2〜6回、各10〜30ダメージ（ランダム）',
+    type: 'attack',
+    cost: 4,
+    effects: [
+      { type: 'damage', value: 20, target: 'enemy', randomRange: [10, 30] },
+      { type: 'damage', value: 20, target: 'enemy', randomRange: [10, 30] },
+      { type: 'damage', value: 20, target: 'enemy', randomRange: [0, 30] },
+      { type: 'damage', value: 20, target: 'enemy', randomRange: [0, 30] },
+    ],
+    category: 'risk_reward',
+    rarity: 5,
+    flavorText: '連鎖は止まらない',
+    isGamble: true,
+  },
+  {
+    id: 1031,
+    name: 'オール・オア・ナッシング',
+    description: '0〜250ダメージ（極端なランダム）',
+    type: 'attack',
+    cost: 5,
+    effects: [
+      { type: 'damage', value: 125, target: 'enemy', randomRange: [0, 250] },
+    ],
+    category: 'risk_reward',
+    rarity: 5,
+    flavorText: '全か無か',
+    isGamble: true,
+  },
+  {
+    id: 1032,
+    name: '揺らぐ守り',
+    description: '20〜100ブロック（ランダム）',
+    type: 'defense',
+    cost: 3,
+    effects: [
+      { type: 'block', value: 60, target: 'self', randomRange: [20, 100] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '守りは揺らぐ',
+    isGamble: true,
+  },
+  {
+    id: 1033,
+    name: '賭博師の直感',
+    description: '1〜4枚ドロー + 闘志0〜3（ランダム）',
+    type: 'skill',
+    cost: 2,
+    effects: [
+      { type: 'draw', value: 2, target: 'self', randomRange: [1, 4] },
+      { type: 'buff', value: 1, target: 'self', statusType: 'strength', randomRange: [0, 3] },
+    ],
+    category: 'risk_reward',
+    rarity: 4,
+    flavorText: '直感を信じろ',
+    isGamble: true,
+  },
+];
+
+// リスク/リターンカードをメイン配列に追加
+export const riskRewardCards: Card[] = [
+  ...hpCostCards,
+  ...conditionalCards,
+  ...gambleCards,
+];
+
+// 全カード（既存 + リスク/リターン）
+cards.push(...riskRewardCards);
+
+// リスク/リターンカードを取得
+export const getRiskRewardCards = (): Card[] => {
+  return riskRewardCards;
+};
+
+// HPコストカードを取得
+export const getHpCostCards = (): Card[] => {
+  return hpCostCards;
+};
+
+// 条件付きカードを取得
+export const getConditionalCards = (): Card[] => {
+  return conditionalCards;
+};
+
+// ギャンブルカードを取得
+export const getGambleCards = (): Card[] => {
+  return gambleCards;
 };

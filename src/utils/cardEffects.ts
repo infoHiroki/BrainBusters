@@ -21,14 +21,55 @@ export interface CardPlayResult {
   healAmount: number;
   damageDealt: number[];
   enemiesKilled: number[];
+  selfDamage: number;         // HPコストによる自傷ダメージ
+  conditionMet: boolean;      // 条件達成フラグ
 }
+
+// 条件が満たされているかチェック
+export const checkPlayCondition = (
+  condition: string | undefined,
+  playerHp: number,
+  playerMaxHp: number,
+  playerBlock: number,
+  playerStatuses: StatusEffect[]
+): boolean => {
+  if (!condition) return false;
+
+  const hpPercent = playerHp / playerMaxHp;
+
+  switch (condition) {
+    case 'hp_below_50':
+      return hpPercent <= 0.5;
+    case 'hp_above_50':
+      return hpPercent > 0.5;
+    case 'low_hp':
+      return hpPercent <= 0.3;
+    case 'no_block':
+      return playerBlock === 0;
+    case 'has_status':
+      return playerStatuses.length > 0;
+    default:
+      return false;
+  }
+};
+
+// ランダム値を計算
+const getRandomValue = (effect: CardEffect): number => {
+  if (effect.randomRange) {
+    const [min, max] = effect.randomRange;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  return effect.value;
+};
 
 // カードを使用
 export const playCardEffects = (
   card: Card,
   battleState: BattleState,
   targetEnemyIndex: number = 0,
-  relics: Relic[] = []
+  relics: Relic[] = [],
+  playerHp: number = 100,
+  playerMaxHp: number = 100
 ): CardPlayResult => {
   let enemies = [...battleState.enemies];
   let playerBlock = battleState.playerBlock;
@@ -36,8 +77,21 @@ export const playCardEffects = (
   let cardsDrawn = 0;
   let energyGained = 0;
   let healAmount = 0;
+  let selfDamage = 0;
   const damageDealt: number[] = [];
   const enemiesKilled: number[] = [];
+
+  // 条件チェック
+  const conditionMet = checkPlayCondition(
+    card.playCondition,
+    playerHp,
+    playerMaxHp,
+    playerBlock,
+    playerStatuses
+  );
+
+  // 条件達成時のボーナス倍率
+  const bonusMultiplier = conditionMet && card.conditionBonus ? card.conditionBonus : 1;
 
   // レリック効果を適用（カード使用時）
   for (const relic of relics) {
@@ -85,13 +139,17 @@ export const playCardEffects = (
 
   // カード効果を処理
   for (const effect of card.effects) {
+    // ランダム値またはボーナス適用後の値を計算
+    const baseValue = getRandomValue(effect);
+    const effectValue = Math.floor(baseValue * bonusMultiplier);
+
     switch (effect.type) {
       case 'damage':
         if (effect.target === 'all_enemies') {
           // 全体攻撃
           enemies = enemies.map((enemy, index) => {
             if (enemy.hp <= 0) return enemy;
-            const result = damageEnemy(enemy, effect.value, playerStatuses);
+            const result = damageEnemy(enemy, effectValue, playerStatuses);
             damageDealt.push(result.actualDamage);
             if (result.killed) {
               enemiesKilled.push(index);
@@ -103,7 +161,7 @@ export const playCardEffects = (
           if (enemies[targetEnemyIndex] && enemies[targetEnemyIndex].hp > 0) {
             const result = damageEnemy(
               enemies[targetEnemyIndex],
-              effect.value,
+              effectValue,
               playerStatuses
             );
             enemies[targetEnemyIndex] = result.enemy;
@@ -116,19 +174,24 @@ export const playCardEffects = (
         break;
 
       case 'block':
-        playerBlock += calculateBlock(effect.value, playerStatuses);
+        playerBlock += calculateBlock(effectValue, playerStatuses);
         break;
 
       case 'draw':
-        cardsDrawn += effect.value;
+        cardsDrawn += effectValue;
         break;
 
       case 'energy':
-        energyGained += effect.value;
+        energyGained += effectValue;
         break;
 
       case 'heal':
-        healAmount += effect.value;
+        healAmount += effectValue;
+        break;
+
+      case 'self_damage':
+        // HPコスト（自傷ダメージ）
+        selfDamage += effectValue;
         break;
 
       case 'buff':
@@ -243,6 +306,8 @@ export const playCardEffects = (
     healAmount,
     damageDealt,
     enemiesKilled,
+    selfDamage,
+    conditionMet,
   };
 };
 
@@ -250,7 +315,8 @@ export const playCardEffects = (
 export const canPlayCard = (
   card: Card,
   currentEnergy: number,
-  enemies: Enemy[]
+  enemies: Enemy[],
+  playerHp: number = 100
 ): boolean => {
   // エネルギー不足
   if (card.cost > currentEnergy) {
@@ -261,6 +327,18 @@ export const canPlayCard = (
   if (card.type === 'attack') {
     const hasAliveEnemy = enemies.some(e => e.hp > 0);
     if (!hasAliveEnemy) {
+      return false;
+    }
+  }
+
+  // HPコストカードはHP消費で死なないかチェック
+  const selfDamageEffect = card.effects.find(e => e.type === 'self_damage');
+  if (selfDamageEffect) {
+    // ランダム範囲がある場合は最大値でチェック
+    const maxSelfDamage = selfDamageEffect.randomRange
+      ? selfDamageEffect.randomRange[1]
+      : selfDamageEffect.value;
+    if (playerHp <= maxSelfDamage) {
       return false;
     }
   }
