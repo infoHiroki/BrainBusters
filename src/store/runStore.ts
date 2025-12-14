@@ -123,12 +123,15 @@ export const clearRunState = async (): Promise<void> => {
 };
 
 // バトル状態を初期化
-export const initBattleState = (runState: RunState): BattleState => {
+export const initBattleState = (
+  runState: RunState,
+  overrideNodeType?: 'battle' | 'elite' | 'boss'
+): BattleState => {
   const currentNode = runState.map.find(n => n.id === runState.currentNodeId);
-  const nodeType = currentNode?.type || 'battle';
+  const nodeType = overrideNodeType || (currentNode?.type as 'battle' | 'elite' | 'boss') || 'battle';
 
   return {
-    enemies: generateEnemyGroup(runState.floor, nodeType as 'battle' | 'elite' | 'boss'),
+    enemies: generateEnemyGroup(runState.floor, nodeType),
     turn: 1,
     playerBlock: 0,
     playerStatuses: [],

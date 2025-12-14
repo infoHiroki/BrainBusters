@@ -147,12 +147,14 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
 
 interface BattleScreenProps {
   runState: RunState;
-  onBattleEnd: (victory: boolean, updatedRunState: RunState) => void;
+  onBattleEnd: (victory: boolean, updatedRunState: RunState, enemiesDefeated?: number) => void;
+  nodeType?: 'battle' | 'elite' | 'boss';  // デバッグ用: ノードタイプを強制指定
 }
 
 export const BattleScreen: React.FC<BattleScreenProps> = ({
   runState,
   onBattleEnd,
+  nodeType,
 }) => {
   // バトル状態
   const [battleState, setBattleState] = useState<BattleState | null>(null);
@@ -191,8 +193,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // バトル初期化
   useEffect(() => {
     const initBattle = () => {
-      // バトル状態を初期化
-      const newBattleState = initBattleState(runState);
+      // バトル状態を初期化（nodeTypeが指定されていれば使用）
+      const newBattleState = initBattleState(runState, nodeType);
       setBattleState(newBattleState);
 
       // シェイクアニメーションを初期化
@@ -1292,7 +1294,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       ...currentRunState,
       hp: victory ? hp : 0,
     };
-    onBattleEnd(victory, updatedRunState);
+    onBattleEnd(victory, updatedRunState, enemiesKilledThisBattle);
   };
 
   if (!battleState) {

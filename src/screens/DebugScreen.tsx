@@ -18,7 +18,7 @@ import { startNewRun, healPlayer, updateGold } from '../store/runStore';
 import { generateEnemyGroup, getBossForFloor, createEnemy, getEliteEnemies, getNormalEnemies } from '../data/enemies';
 import { generateRewardCards } from '../data/cards';
 
-type DebugPhase = 'menu' | 'battle' | 'reward' | 'shop' | 'rest';
+type DebugPhase = 'menu' | 'battle' | 'reward' | 'shop' | 'rest' | 'result';
 
 interface DebugScreenProps {
   onExit: () => void;
@@ -31,6 +31,12 @@ interface BattleConfig {
   enemyCount: number;
 }
 
+// バトル結果
+interface BattleResult {
+  victory: boolean;
+  enemiesDefeated: number;
+}
+
 export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   const [phase, setPhase] = useState<DebugPhase>('menu');
   const [runState, setRunState] = useState<RunState | null>(null);
@@ -39,6 +45,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
     floor: 1,
     enemyCount: 1,
   });
+  const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
 
   // デバッグ用RunState生成
   const createDebugRunState = async (config: Partial<RunState> = {}): Promise<RunState> => {
@@ -78,20 +85,9 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
 
   // バトル終了ハンドラ
   const handleBattleEnd = async (victory: boolean, updatedRunState: RunState, enemiesDefeated: number = 0) => {
-    if (!victory) {
-      Alert.alert('デバッグ', `敗北！ (倒した敵: ${enemiesDefeated})`, [
-        { text: 'OK', onPress: () => setPhase('menu') }
-      ]);
-      return;
-    }
-
-    Alert.alert('デバッグ', `勝利！ (倒した敵: ${enemiesDefeated})`, [
-      { text: '報酬画面へ', onPress: () => {
-        setRunState(updatedRunState);
-        setPhase('reward');
-      }},
-      { text: 'メニューへ', onPress: () => setPhase('menu') },
-    ]);
+    setBattleResult({ victory, enemiesDefeated });
+    setRunState(updatedRunState);
+    setPhase('result');
   };
 
   // カード選択ハンドラ（ダミー）
@@ -281,6 +277,49 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
     );
   }
 
+  // 結果画面（バトル終了後）
+  if (phase === 'result' && battleResult) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={battleResult.victory ? ['#1a2e1a', '#2d4e2d', '#1a2e1a'] : ['#2e1a1a', '#4e2d2d', '#2e1a1a']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultTitle}>
+            {battleResult.victory ? '🎉 勝利！' : '💀 敗北...'}
+          </Text>
+          <Text style={styles.resultInfo}>
+            倒した敵: {battleResult.enemiesDefeated}体
+          </Text>
+          <Text style={styles.resultInfo}>
+            設定: {battleConfig.floor}階 / {battleConfig.type === 'boss' ? 'ボス' : battleConfig.type === 'elite' ? 'エリート' : '通常'}
+          </Text>
+
+          <View style={styles.resultButtons}>
+            {battleResult.victory && (
+              <TouchableOpacity
+                style={[styles.resultButton, styles.rewardButton]}
+                onPress={() => setPhase('reward')}
+              >
+                <Text style={styles.resultButtonText}>🎁 報酬画面へ</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.resultButton, styles.menuButton]}
+              onPress={() => {
+                setBattleResult(null);
+                setPhase('menu');
+              }}
+            >
+              <Text style={styles.resultButtonText}>🛠️ デバッグメニューへ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   // 報酬画面
   if (phase === 'reward' && runState) {
     return (
@@ -380,5 +419,45 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     marginVertical: 2,
+  },
+  // 結果画面
+  resultContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  resultTitle: {
+    color: '#fff',
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  resultInfo: {
+    color: '#ccc',
+    fontSize: 18,
+    marginVertical: 8,
+  },
+  resultButtons: {
+    marginTop: 40,
+    gap: 16,
+  },
+  resultButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    minWidth: 250,
+    alignItems: 'center',
+  },
+  rewardButton: {
+    backgroundColor: '#2a6a4a',
+  },
+  menuButton: {
+    backgroundColor: '#4a4a6a',
+  },
+  resultButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
