@@ -19,8 +19,8 @@ import { getEliteEnemies, getNormalEnemies, getBossForFloor } from '../data/enem
 import { getRandomCard } from '../data/cards';
 import { DamageEffect, DefeatEffect, PsychedelicEffect } from '../components/effects';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_WIDTH = 180;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SIDEBAR_WIDTH = 220;
 
 type DebugPhase = 'menu' | 'battle' | 'reward' | 'result' | 'effects';
 type TestMode = 'battle' | 'reward' | 'effects';
@@ -227,6 +227,11 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
 
   // メニュー画面
   if (phase === 'menu') {
+    const mainAreaWidth = SCREEN_WIDTH - SIDEBAR_WIDTH;
+    const mainAreaHeight = SCREEN_HEIGHT;
+    const effectCenterX = mainAreaWidth / 2;
+    const effectCenterY = mainAreaHeight / 2 - 50;
+
     return (
       <View style={styles.container}>
         <LinearGradient
@@ -235,410 +240,294 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
         />
 
         <View style={styles.layout}>
-          {/* サイドバー（プリセット一覧） */}
+          {/* サイドバー（全設定） */}
           <View style={styles.sidebar}>
+            {/* ヘッダー */}
             <View style={styles.sidebarHeader}>
-              <Text style={styles.sidebarTitle}>📋 プリセット</Text>
+              <TouchableOpacity onPress={onExit} style={styles.sidebarBack}>
+                <Text style={styles.sidebarBackText}>← 戻る</Text>
+              </TouchableOpacity>
+              <Text style={styles.sidebarTitle}>🛠️ デバッグ</Text>
             </View>
 
-            <ScrollView style={styles.sidebarScroll}>
-              {/* バトルテスト */}
-              <Text style={styles.presetCategory}>⚔️ バトル</Text>
-              {TEST_PRESETS.filter(p => p.category === 'battle').map(preset => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={[
-                    styles.presetItem,
-                    selectedPresetId === preset.id && styles.presetItemSelected,
-                  ]}
-                  onPress={() => applyPreset(preset)}
-                >
-                  <Text style={[
-                    styles.presetName,
-                    selectedPresetId === preset.id && styles.presetNameSelected,
-                  ]}>
-                    {preset.id}. {preset.name}
-                  </Text>
-                  <Text style={styles.presetDesc}>{preset.description}</Text>
-                </TouchableOpacity>
-              ))}
+            <ScrollView style={styles.sidebarScroll} showsVerticalScrollIndicator={false}>
+              {/* テストモード選択 */}
+              <View style={styles.sidebarSection}>
+                <View style={styles.modeRow}>
+                  <TouchableOpacity
+                    style={[styles.modeTab, testMode === 'battle' && styles.modeTabActive]}
+                    onPress={() => setTestMode('battle')}
+                  >
+                    <Text style={[styles.modeTabText, testMode === 'battle' && styles.modeTabTextActive]}>⚔️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modeTab, testMode === 'reward' && styles.modeTabActive]}
+                    onPress={() => setTestMode('reward')}
+                  >
+                    <Text style={[styles.modeTabText, testMode === 'reward' && styles.modeTabTextActive]}>🎁</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modeTab, testMode === 'effects' && styles.modeTabActive]}
+                    onPress={() => setTestMode('effects')}
+                  >
+                    <Text style={[styles.modeTabText, testMode === 'effects' && styles.modeTabTextActive]}>✨</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-              {/* 報酬画面テスト */}
-              <Text style={styles.presetCategory}>🎁 報酬</Text>
-              {TEST_PRESETS.filter(p => p.category === 'reward').map(preset => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={[
-                    styles.presetItem,
-                    selectedPresetId === preset.id && styles.presetItemSelected,
-                  ]}
-                  onPress={() => applyPreset(preset)}
-                >
-                  <Text style={[
-                    styles.presetName,
-                    selectedPresetId === preset.id && styles.presetNameSelected,
-                  ]}>
-                    {preset.id}. {preset.name}
-                  </Text>
-                  <Text style={styles.presetDesc}>{preset.description}</Text>
-                </TouchableOpacity>
-              ))}
+              {/* バトル/報酬用設定 */}
+              {testMode !== 'effects' && (
+                <>
+                  {/* ノードタイプ */}
+                  <View style={styles.sidebarSection}>
+                    <Text style={styles.sidebarLabel}>ノード</Text>
+                    <View style={styles.compactRow}>
+                      <TouchableOpacity
+                        style={[styles.compactBtn, nodeType === 'battle' && styles.compactBtnActive]}
+                        onPress={() => { setNodeType('battle'); setSelectedPresetId(null); }}
+                      >
+                        <Text style={styles.compactBtnText}>通常</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.compactBtn, styles.eliteBtn, nodeType === 'elite' && styles.compactBtnActive]}
+                        onPress={() => { setNodeType('elite'); setSelectedPresetId(null); if (enemyCount > 2) setEnemyCount(2); }}
+                      >
+                        <Text style={styles.compactBtnText}>E</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.compactBtn, styles.bossBtn, nodeType === 'boss' && styles.compactBtnActive]}
+                        onPress={() => { setNodeType('boss'); setSelectedPresetId(null); setEnemyCount(1); if (!(GAME_CONFIG.BOSS_FLOORS as readonly number[]).includes(floor)) setFloor(5); }}
+                      >
+                        <Text style={styles.compactBtnText}>B</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
 
-              {/* エフェクトテスト */}
-              <Text style={styles.presetCategory}>✨ エフェクト</Text>
-              {TEST_PRESETS.filter(p => p.category === 'effects').map(preset => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={[
-                    styles.presetItem,
-                    selectedPresetId === preset.id && styles.presetItemSelected,
-                  ]}
-                  onPress={() => applyPreset(preset)}
-                >
-                  <Text style={[
-                    styles.presetName,
-                    selectedPresetId === preset.id && styles.presetNameSelected,
-                  ]}>
-                    {preset.id}. {preset.name}
-                  </Text>
-                  <Text style={styles.presetDesc}>{preset.description}</Text>
-                </TouchableOpacity>
-              ))}
+                  {/* 階層 */}
+                  <View style={styles.sidebarSection}>
+                    <Text style={styles.sidebarLabel}>階層: {floor}F</Text>
+                    <View style={styles.floorGrid}>
+                      {floorOptions.map(f => (
+                        <TouchableOpacity
+                          key={f}
+                          style={[styles.floorChip, floor === f && styles.floorChipActive]}
+                          onPress={() => { setFloor(f); setSelectedPresetId(null); }}
+                        >
+                          <Text style={[styles.floorChipText, floor === f && styles.floorChipTextActive]}>{f}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
 
-              <View style={{ height: 100 }} />
+                  {/* 敵数（バトルのみ） */}
+                  {testMode === 'battle' && (
+                    <View style={styles.sidebarSection}>
+                      <Text style={styles.sidebarLabel}>敵数</Text>
+                      <View style={styles.compactRow}>
+                        {[1, 2, 3].map(c => (
+                          <TouchableOpacity
+                            key={c}
+                            style={[styles.compactBtn, enemyCount === c && styles.compactBtnActive, c > getMaxEnemyCount() && styles.compactBtnDisabled]}
+                            onPress={() => { if (c <= getMaxEnemyCount()) { setEnemyCount(c); setSelectedPresetId(null); } }}
+                            disabled={c > getMaxEnemyCount()}
+                          >
+                            <Text style={[styles.compactBtnText, c > getMaxEnemyCount() && styles.compactBtnTextDisabled]}>{c}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* HP */}
+                  <View style={styles.sidebarSection}>
+                    <Text style={styles.sidebarLabel}>HP: {hp}</Text>
+                    <View style={styles.compactRow}>
+                      <TouchableOpacity style={[styles.compactBtn, hp === 10 && styles.compactBtnActive]} onPress={() => { setHp(10); setSelectedPresetId(null); }}>
+                        <Text style={styles.compactBtnText}>10</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.compactBtn, hp === 35 && styles.compactBtnActive]} onPress={() => { setHp(35); setSelectedPresetId(null); }}>
+                        <Text style={styles.compactBtnText}>35</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.compactBtn, hp === 70 && styles.compactBtnActive]} onPress={() => { setHp(70); setSelectedPresetId(null); }}>
+                        <Text style={styles.compactBtnText}>70</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* ストック */}
+                  <View style={styles.sidebarSection}>
+                    <Text style={styles.sidebarLabel}>ストック: {stockCount}</Text>
+                    <View style={styles.compactRow}>
+                      {[0, 1, 2, 3, 4, 5].map(c => (
+                        <TouchableOpacity
+                          key={c}
+                          style={[styles.miniBtn, stockCount === c && styles.miniBtnActive]}
+                          onPress={() => { setStockCount(c); setSelectedPresetId(null); }}
+                        >
+                          <Text style={styles.miniBtnText}>{c}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* 開始ボタン */}
+                  <TouchableOpacity style={styles.sidebarStartBtn} onPress={startTest}>
+                    <Text style={styles.sidebarStartBtnText}>
+                      {testMode === 'battle' ? '▶ バトル' : '▶ 報酬画面'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* エフェクト用設定 */}
+              {testMode === 'effects' && (
+                <View style={styles.sidebarSection}>
+                  <Text style={styles.sidebarLabel}>エフェクト</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'damage' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>💥 DMG</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'defeat_normal' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>💨 撃破</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'defeat_elite' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_elite'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>💫 E撃破</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'defeat_boss' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>🌟 B撃破</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'psychedelic_normal' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('psychedelic_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>🌀 報酬</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'psychedelic_boss' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('psychedelic_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>🔮 B報酬</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.replayBtn}
+                    onPress={() => { setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                  >
+                    <Text style={styles.replayBtnText}>🔄 再生</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* プリセット一覧 */}
+              <View style={styles.presetSection}>
+                <Text style={styles.presetHeader}>📋 プリセット</Text>
+
+                <Text style={styles.presetCategory}>⚔️ バトル</Text>
+                {TEST_PRESETS.filter(p => p.category === 'battle').map(preset => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[styles.presetItem, selectedPresetId === preset.id && styles.presetItemSelected]}
+                    onPress={() => applyPreset(preset)}
+                  >
+                    <Text style={[styles.presetName, selectedPresetId === preset.id && styles.presetNameSelected]}>
+                      {preset.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <Text style={styles.presetCategory}>🎁 報酬</Text>
+                {TEST_PRESETS.filter(p => p.category === 'reward').map(preset => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[styles.presetItem, selectedPresetId === preset.id && styles.presetItemSelected]}
+                    onPress={() => applyPreset(preset)}
+                  >
+                    <Text style={[styles.presetName, selectedPresetId === preset.id && styles.presetNameSelected]}>
+                      {preset.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <Text style={styles.presetCategory}>✨ エフェクト</Text>
+                {TEST_PRESETS.filter(p => p.category === 'effects').map(preset => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[styles.presetItem, selectedPresetId === preset.id && styles.presetItemSelected]}
+                    onPress={() => applyPreset(preset)}
+                  >
+                    <Text style={[styles.presetName, selectedPresetId === preset.id && styles.presetNameSelected]}>
+                      {preset.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <View style={{ height: 100 }} />
+              </View>
             </ScrollView>
           </View>
 
-          {/* メインコンテンツ */}
-          <ScrollView style={styles.mainContent} contentContainerStyle={styles.mainContentInner}>
-            {/* ヘッダー */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={onExit} style={styles.backButton}>
-                <Text style={styles.backText}>← タイトルへ</Text>
-              </TouchableOpacity>
-              <Text style={styles.title}>🛠️ デバッグモード</Text>
-            </View>
-
-            {/* テストモード選択 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎯 テストモード</Text>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.modeButton, testMode === 'battle' && styles.selectedMode]}
-                  onPress={() => setTestMode('battle')}
-                >
-                  <Text style={styles.modeButtonText}>⚔️ バトル</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeButton, testMode === 'reward' && styles.selectedMode]}
-                  onPress={() => setTestMode('reward')}
-                >
-                  <Text style={styles.modeButtonText}>🎁 報酬画面</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeButton, testMode === 'effects' && styles.selectedMode]}
-                  onPress={() => setTestMode('effects')}
-                >
-                  <Text style={styles.modeButtonText}>✨ エフェクト</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* ノードタイプ選択 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📍 ノードタイプ</Text>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.typeButton, nodeType === 'battle' && styles.selectedType]}
-                  onPress={() => {
-                    setNodeType('battle');
-                    setSelectedPresetId(null);
-                    if (enemyCount > 3) setEnemyCount(3);
-                  }}
-                >
-                  <Text style={styles.typeButtonText}>通常</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeButton, styles.eliteType, nodeType === 'elite' && styles.selectedType]}
-                  onPress={() => {
-                    setNodeType('elite');
-                    setSelectedPresetId(null);
-                    if (enemyCount > 2) setEnemyCount(2);
-                  }}
-                >
-                  <Text style={styles.typeButtonText}>エリート</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeButton, styles.bossType, nodeType === 'boss' && styles.selectedType]}
-                  onPress={() => {
-                    setNodeType('boss');
-                    setSelectedPresetId(null);
-                    setEnemyCount(1);
-                    if (!(GAME_CONFIG.BOSS_FLOORS as readonly number[]).includes(floor)) {
-                      setFloor(5);
-                    }
-                  }}
-                >
-                  <Text style={styles.typeButtonText}>ボス</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* 階層選択 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                🏔️ 階層: {floor}階
-                {nodeType === 'boss' && ` (${getBossName(floor)})`}
-              </Text>
-              <View style={styles.buttonGrid}>
-                {floorOptions.map(f => {
-                  const isBossFloor = (GAME_CONFIG.BOSS_FLOORS as readonly number[]).includes(f);
-                  return (
-                    <TouchableOpacity
-                      key={f}
-                      style={[
-                        styles.floorButton,
-                        floor === f && styles.selectedFloor,
-                        isBossFloor && styles.bossFloorButton,
-                      ]}
-                      onPress={() => {
-                        setFloor(f);
-                        setSelectedPresetId(null);
-                      }}
-                    >
-                      <Text style={styles.floorButtonText}>{f}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* バトル専用: 敵数選択 */}
-            {testMode === 'battle' && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>👾 敵の数: {enemyCount}体</Text>
-                <View style={styles.buttonRow}>
-                  {[1, 2, 3].map(count => (
-                    <TouchableOpacity
-                      key={count}
-                      style={[
-                        styles.countButton,
-                        enemyCount === count && styles.selectedCount,
-                        count > getMaxEnemyCount() && styles.disabledButton,
-                      ]}
-                      onPress={() => {
-                        if (count <= getMaxEnemyCount()) {
-                          setEnemyCount(count);
-                          setSelectedPresetId(null);
-                        }
-                      }}
-                      disabled={count > getMaxEnemyCount()}
-                    >
-                      <Text style={[
-                        styles.countButtonText,
-                        count > getMaxEnemyCount() && styles.disabledText,
-                      ]}>
-                        {count}体
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* エフェクト専用: エフェクト種類選択 */}
-            {testMode === 'effects' && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>✨ エフェクト種類</Text>
-
-                <Text style={styles.label}>ダメージエフェクト</Text>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'damage' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('damage')}
-                  >
-                    <Text style={styles.effectButtonText}>💥 ダメージ</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.label}>敵撃破エフェクト</Text>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'defeat_normal' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('defeat_normal')}
-                  >
-                    <Text style={styles.effectButtonText}>💨 通常</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'defeat_elite' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('defeat_elite')}
-                  >
-                    <Text style={styles.effectButtonText}>💫 エリート</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'defeat_boss' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('defeat_boss')}
-                  >
-                    <Text style={styles.effectButtonText}>🌟 ボス</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.label}>報酬画面エフェクト</Text>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'psychedelic_normal' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('psychedelic_normal')}
-                  >
-                    <Text style={styles.effectButtonText}>🌀 通常</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.effectButton, selectedEffectType === 'psychedelic_boss' && styles.selectedEffect]}
-                    onPress={() => setSelectedEffectType('psychedelic_boss')}
-                  >
-                    <Text style={styles.effectButtonText}>🔮 ボス</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* プレイヤー状態（エフェクトモード以外） */}
-            {testMode !== 'effects' && <View style={styles.section}>
-              <Text style={styles.sectionTitle}>👤 プレイヤー状態</Text>
-
-              <Text style={styles.label}>HP: {hp} / {GAME_CONFIG.STARTING_HP}</Text>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.smallButton, hp === 10 && styles.selectedButton]}
-                  onPress={() => { setHp(10); setSelectedPresetId(null); }}
-                >
-                  <Text style={styles.buttonText}>瀕死(10)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.smallButton, hp === 35 && styles.selectedButton]}
-                  onPress={() => { setHp(35); setSelectedPresetId(null); }}
-                >
-                  <Text style={styles.buttonText}>半分(35)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.smallButton, hp === GAME_CONFIG.STARTING_HP && styles.selectedButton]}
-                  onPress={() => { setHp(GAME_CONFIG.STARTING_HP); setSelectedPresetId(null); }}
-                >
-                  <Text style={styles.buttonText}>満タン({GAME_CONFIG.STARTING_HP})</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>ストックカード: {stockCount}/5</Text>
-              <View style={styles.buttonRow}>
-                {[0, 1, 2, 3, 4, 5].map(count => (
-                  <TouchableOpacity
-                    key={count}
-                    style={[styles.tinyButton, stockCount === count && styles.selectedButton]}
-                    onPress={() => { setStockCount(count); setSelectedPresetId(null); }}
-                  >
-                    <Text style={styles.buttonText}>{count}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>}
-
-            {/* テスト開始ボタン */}
-            <TouchableOpacity style={styles.startButton} onPress={startTest}>
-              <Text style={styles.startButtonText}>
-                {testMode === 'battle' ? '⚔️ バトル開始' :
-                 testMode === 'reward' ? '🎁 報酬画面を開く' :
-                 '✨ エフェクト再生'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* 設定サマリー */}
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryText}>
-                {testMode === 'effects' ? (
-                  `✨ ${selectedEffectType.replace('_', ' ')}`
-                ) : (
-                  `${testMode === 'battle' ? '⚔️' : '🎁'} ${nodeType === 'boss' ? 'ボス' : nodeType === 'elite' ? 'エリート' : '通常'} | ${floor}階 | HP:${hp} | ストック:${stockCount}${testMode === 'battle' ? ` | 敵:${enemyCount}体` : ''}`
+          {/* メインプレビューエリア */}
+          <View style={styles.mainPreview}>
+            {/* エフェクトモード: フル画面プレビュー */}
+            {testMode === 'effects' && showingEffect && (
+              <>
+                {selectedEffectType === 'damage' && (
+                  <DamageEffect key={effectKey} x={effectCenterX} y={effectCenterY} damage={150} onComplete={() => {}} />
                 )}
-              </Text>
-            </View>
+                {selectedEffectType === 'defeat_normal' && (
+                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="normal" onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'defeat_elite' && (
+                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="elite" onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'defeat_boss' && (
+                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="boss" onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'psychedelic_normal' && (
+                  <PsychedelicEffect key={effectKey} isBoss={false} />
+                )}
+                {selectedEffectType === 'psychedelic_boss' && (
+                  <PsychedelicEffect key={effectKey} isBoss={true} />
+                )}
+              </>
+            )}
 
-            {/* エフェクトインライン表示エリア */}
-            {testMode === 'effects' && (
-              <View style={styles.effectPreviewArea}>
-                <View style={styles.effectPreviewContainer}>
-                  {showingEffect && (
-                    <>
-                      {selectedEffectType === 'damage' && (
-                        <DamageEffect
-                          key={effectKey}
-                          x={140}
-                          y={100}
-                          damage={150}
-                          onComplete={() => {}}
-                        />
-                      )}
-                      {selectedEffectType === 'defeat_normal' && (
-                        <DefeatEffect
-                          key={effectKey}
-                          x={140}
-                          y={100}
-                          enemyType="normal"
-                          onComplete={() => {}}
-                        />
-                      )}
-                      {selectedEffectType === 'defeat_elite' && (
-                        <DefeatEffect
-                          key={effectKey}
-                          x={140}
-                          y={100}
-                          enemyType="elite"
-                          onComplete={() => {}}
-                        />
-                      )}
-                      {selectedEffectType === 'defeat_boss' && (
-                        <DefeatEffect
-                          key={effectKey}
-                          x={140}
-                          y={100}
-                          enemyType="boss"
-                          onComplete={() => {}}
-                        />
-                      )}
-                      {selectedEffectType === 'psychedelic_normal' && (
-                        <View style={styles.psychedelicPreview}>
-                          <PsychedelicEffect
-                            key={effectKey}
-                            isBoss={false}
-                          />
-                        </View>
-                      )}
-                      {selectedEffectType === 'psychedelic_boss' && (
-                        <View style={styles.psychedelicPreview}>
-                          <PsychedelicEffect
-                            key={effectKey}
-                            isBoss={true}
-                          />
-                        </View>
-                      )}
-                    </>
-                  )}
-                </View>
-                <TouchableOpacity
-                  style={styles.effectReplayInline}
-                  onPress={() => {
-                    setShowingEffect(false);
-                    setTimeout(() => {
-                      setEffectKey(prev => prev + 1);
-                      setShowingEffect(true);
-                    }, 50);
-                  }}
-                >
-                  <Text style={styles.effectReplayInlineText}>🔄 再生</Text>
+            {/* 待機状態 */}
+            {testMode !== 'effects' && (
+              <View style={styles.waitingState}>
+                <Text style={styles.waitingIcon}>{testMode === 'battle' ? '⚔️' : '🎁'}</Text>
+                <Text style={styles.waitingText}>
+                  {nodeType === 'boss' ? 'ボス' : nodeType === 'elite' ? 'エリート' : '通常'} | {floor}階
+                </Text>
+                <Text style={styles.waitingSubtext}>
+                  HP:{hp} | ストック:{stockCount}{testMode === 'battle' ? ` | 敵:${enemyCount}` : ''}
+                </Text>
+                <TouchableOpacity style={styles.waitingStartBtn} onPress={startTest}>
+                  <Text style={styles.waitingStartBtnText}>▶ 開始</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <View style={{ height: 40 }} />
-          </ScrollView>
+            {/* エフェクト待機状態 */}
+            {testMode === 'effects' && !showingEffect && (
+              <View style={styles.waitingState}>
+                <Text style={styles.waitingIcon}>✨</Text>
+                <Text style={styles.waitingText}>エフェクトを選択</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -849,257 +738,251 @@ const styles = StyleSheet.create({
   // サイドバー
   sidebar: {
     width: SIDEBAR_WIDTH,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRightWidth: 1,
     borderRightColor: 'rgba(255, 255, 255, 0.1)',
   },
   sidebarHeader: {
     paddingTop: 50,
-    paddingBottom: 12,
-    paddingHorizontal: 12,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
     backgroundColor: 'rgba(100, 200, 150, 0.15)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(100, 200, 150, 0.3)',
   },
+  sidebarBack: {
+    marginBottom: 4,
+  },
+  sidebarBackText: {
+    color: '#888',
+    fontSize: 11,
+  },
   sidebarTitle: {
     color: '#8fdfb0',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   sidebarScroll: {
     flex: 1,
     paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingTop: 6,
   },
-  presetCategory: {
+  sidebarSection: {
+    marginBottom: 10,
+  },
+  sidebarLabel: {
     color: '#aaa',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontSize: 10,
     marginBottom: 4,
-    marginLeft: 4,
   },
-  presetItem: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 4,
-    borderWidth: 2,
-    borderColor: 'transparent',
+  // モードタブ
+  modeRow: {
+    flexDirection: 'row',
+    gap: 4,
   },
-  presetItemSelected: {
-    backgroundColor: 'rgba(100, 200, 150, 0.2)',
-    borderColor: '#6a8',
-  },
-  presetName: {
-    color: '#ccc',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  presetNameSelected: {
-    color: '#8fdfb0',
-  },
-  presetDesc: {
-    color: '#666',
-    fontSize: 9,
-    marginTop: 2,
-  },
-  // メインコンテンツ
-  mainContent: {
+  modeTab: {
     flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
   },
-  mainContentInner: {
-    padding: 16,
-    paddingTop: 40,
+  modeTabActive: {
+    backgroundColor: '#3a5a7a',
   },
-  header: {
-    marginBottom: 16,
+  modeTabText: {
+    fontSize: 16,
   },
-  backButton: {
-    marginBottom: 8,
+  modeTabTextActive: {
+    fontSize: 18,
   },
-  backText: {
-    color: '#888',
-    fontSize: 14,
+  // コンパクトボタン
+  compactRow: {
+    flexDirection: 'row',
+    gap: 4,
   },
-  title: {
+  compactBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 6,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  compactBtnActive: {
+    backgroundColor: '#4a6a8a',
+  },
+  compactBtnDisabled: {
+    opacity: 0.3,
+  },
+  compactBtnText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 11,
     fontWeight: 'bold',
   },
-  section: {
-    marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 10,
-    padding: 12,
+  compactBtnTextDisabled: {
+    color: '#666',
   },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  eliteBtn: {
+    backgroundColor: 'rgba(200, 150, 50, 0.3)',
   },
-  label: {
+  bossBtn: {
+    backgroundColor: 'rgba(200, 50, 100, 0.3)',
+  },
+  // ミニボタン
+  miniBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 4,
+    borderRadius: 3,
+    alignItems: 'center',
+  },
+  miniBtnActive: {
+    backgroundColor: '#4a6a8a',
+  },
+  miniBtnText: {
     color: '#ccc',
-    fontSize: 12,
-    marginBottom: 4,
-    marginTop: 6,
+    fontSize: 10,
   },
-  buttonRow: {
+  // 階層グリッド
+  floorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 3,
   },
-  buttonGrid: {
+  floorChip: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  floorChipActive: {
+    backgroundColor: '#4a6a8a',
+  },
+  floorChipText: {
+    color: '#888',
+    fontSize: 10,
+  },
+  floorChipTextActive: {
+    color: '#fff',
+  },
+  // エフェクトグリッド
+  effectGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
   },
-  // テストモードボタン
-  modeButton: {
-    flex: 1,
-    backgroundColor: '#2a3a4a',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+  effectChip: {
+    backgroundColor: 'rgba(138, 90, 186, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 4,
   },
-  selectedMode: {
+  effectChipActive: {
+    backgroundColor: '#5a3a8a',
+  },
+  effectChipText: {
+    color: '#ccc',
+    fontSize: 10,
+  },
+  replayBtn: {
+    marginTop: 8,
     backgroundColor: '#3a5a7a',
-    borderColor: '#5a8aba',
-  },
-  modeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  // ノードタイプボタン
-  typeButton: {
-    flex: 1,
-    backgroundColor: '#2a4a6a',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
     borderRadius: 6,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  eliteType: {
-    backgroundColor: '#5a4a2a',
-  },
-  bossType: {
-    backgroundColor: '#5a2a4a',
-  },
-  selectedType: {
-    borderColor: '#fff',
-  },
-  typeButtonText: {
+  replayBtnText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  // 階層ボタン
-  floorButton: {
-    backgroundColor: '#2a3a4a',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    minWidth: 40,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  bossFloorButton: {
-    backgroundColor: '#4a2a3a',
-  },
-  selectedFloor: {
-    borderColor: '#fff',
-    backgroundColor: '#4a6a8a',
-  },
-  floorButtonText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  // 敵数ボタン
-  countButton: {
-    flex: 1,
-    backgroundColor: '#2a4a6a',
-    paddingVertical: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedCount: {
-    borderColor: '#fff',
-    backgroundColor: '#4a6a8a',
-  },
-  disabledButton: {
-    backgroundColor: '#1a1a2a',
-    opacity: 0.5,
-  },
-  countButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  disabledText: {
-    color: '#666',
-  },
-  // プレイヤー設定ボタン
-  smallButton: {
-    backgroundColor: '#2a4a6a',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  tinyButton: {
-    backgroundColor: '#2a4a6a',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedButton: {
-    backgroundColor: '#4a6a8a',
-    borderColor: '#6a8aaa',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  // 開始ボタン
-  startButton: {
+  // サイドバー開始ボタン
+  sidebarStartBtn: {
     backgroundColor: '#2a8a4a',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 6,
     alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 4,
   },
-  startButtonText: {
+  sidebarStartBtnText: {
     color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  // プリセットセクション
+  presetSection: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    paddingTop: 8,
+  },
+  presetHeader: {
+    color: '#8fdfb0',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  presetCategory: {
+    color: '#888',
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  presetItem: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    marginBottom: 2,
+  },
+  presetItemSelected: {
+    backgroundColor: 'rgba(100, 200, 150, 0.25)',
+  },
+  presetName: {
+    color: '#aaa',
+    fontSize: 10,
+  },
+  presetNameSelected: {
+    color: '#8fdfb0',
+  },
+  // メインプレビュー
+  mainPreview: {
+    flex: 1,
+    backgroundColor: '#0a0a1a',
+  },
+  waitingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waitingIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  waitingText: {
+    color: '#888',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  // サマリー
-  summaryBox: {
-    backgroundColor: 'rgba(100, 150, 200, 0.15)',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-  },
-  summaryText: {
-    color: '#aaccff',
+  waitingSubtext: {
+    color: '#555',
     fontSize: 12,
+    marginTop: 4,
+  },
+  waitingStartBtn: {
+    marginTop: 20,
+    backgroundColor: '#2a8a4a',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+  },
+  waitingStartBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   // 結果画面
   resultContainer: {
