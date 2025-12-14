@@ -1,5 +1,5 @@
 // 敵撃破エフェクト（SVG版）
-// ヒルマ・アフ・クリント風 - 神聖幾何学的崩壊
+// ヒルマ・アフ・クリント風 - 繊細な神聖幾何学的崩壊
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import {
@@ -23,6 +23,7 @@ const NORMAL_COLORS = [
   '#AAAAAA', // ライトグレー
   '#666666', // ダークグレー
   '#B0B0B0', // シルバー
+  '#9E9E9E', // ミディアムグレー
 ];
 
 const ELITE_COLORS = [
@@ -31,6 +32,7 @@ const ELITE_COLORS = [
   '#FF8C00', // ダークオレンジ
   '#FFDF00', // ゴールデンイエロー
   '#E8B4D8', // ピンク
+  '#F5E6D3', // クリーム
 ];
 
 const BOSS_COLORS = [
@@ -42,6 +44,8 @@ const BOSS_COLORS = [
   '#F39C12', // オレンジ
   '#1ABC9C', // ティール
   '#E8B4D8', // ピンク
+  '#3498DB', // ブルー
+  '#2ECC71', // グリーン
 ];
 
 interface DefeatEffectSvgProps {
@@ -61,11 +65,11 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const textScale = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
 
-  // 設定（敵タイプ別）
+  // 設定（敵タイプ別）- より繊細に
   const config = {
-    normal: { colors: NORMAL_COLORS, ringCount: 4, particleCount: 8, fragmentCount: 6, showText: false },
-    elite: { colors: ELITE_COLORS, ringCount: 6, particleCount: 14, fragmentCount: 10, showText: false },
-    boss: { colors: BOSS_COLORS, ringCount: 10, particleCount: 24, fragmentCount: 16, showText: true },
+    normal: { colors: NORMAL_COLORS, ringCount: 5, particleCount: 12, fragmentCount: 8, showText: false },
+    elite: { colors: ELITE_COLORS, ringCount: 8, particleCount: 20, fragmentCount: 14, showText: false },
+    boss: { colors: BOSS_COLORS, ringCount: 14, particleCount: 36, fragmentCount: 24, showText: true },
   };
 
   const { colors, ringCount, particleCount, fragmentCount, showText } = config[enemyType];
@@ -83,17 +87,17 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const fragmentData = useMemo(() =>
     Array.from({ length: fragmentCount }, (_, i) => {
       const angle = (i / fragmentCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
-      const distance = 60 + Math.random() * 80;
+      const distance = 50 + Math.random() * (enemyType === 'boss' ? 100 : 70);
       return {
         angle,
         distance,
-        size: 8 + Math.random() * 12,
+        size: 4 + Math.random() * 8,
         color: colors[Math.floor(Math.random() * colors.length)],
-        sides: [3, 4, 5, 6][Math.floor(Math.random() * 4)],
+        sides: [3, 4, 5, 6, 8][Math.floor(Math.random() * 5)],
         rotationSpeed: (Math.random() - 0.5) * 2,
       };
     })
-  , [fragmentCount, colors]);
+  , [fragmentCount, colors, enemyType]);
 
   const fragmentAnims = useRef(
     Array.from({ length: fragmentCount }, () => ({
@@ -108,11 +112,11 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const particleData = useMemo(() =>
     Array.from({ length: particleCount }, (_, i) => {
       const angle = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
-      const distance = 40 + Math.random() * 60;
+      const distance = 30 + Math.random() * 60;
       return {
         angle,
         distance,
-        size: 2 + Math.random() * 4,
+        size: 1 + Math.random() * 2.5,
         color: colors[Math.floor(Math.random() * colors.length)],
       };
     })
@@ -130,61 +134,108 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const symbolOpacity = useRef(new Animated.Value(0)).current;
   const symbolRotation = useRef(new Animated.Value(0)).current;
 
-  // 蓮の花（ボス用）
-  const lotusScale = useRef(new Animated.Value(0)).current;
-  const lotusOpacity = useRef(new Animated.Value(0)).current;
-  const lotusRotation = useRef(new Animated.Value(0)).current;
+  // 蓮の花（ボス用）- 複数レイヤー
+  const lotusLayerCount = enemyType === 'boss' ? 3 : 0;
+  const lotusAnims = useRef(
+    Array.from({ length: lotusLayerCount }, () => ({
+      scale: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+      rotation: new Animated.Value(0),
+    }))
+  ).current;
+
+  // 内側の波紋（エリート・ボス用）
+  const innerRippleCount = enemyType === 'boss' ? 6 : enemyType === 'elite' ? 4 : 0;
+  const innerRippleAnims = useRef(
+    Array.from({ length: innerRippleCount }, () => ({
+      scale: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+    }))
+  ).current;
 
   useEffect(() => {
     const animations: Animated.CompositeAnimation[] = [];
 
     // 1. フラッシュ
-    if (enemyType === 'boss') {
+    if (enemyType === 'boss' || enemyType === 'elite') {
       animations.push(
         Animated.sequence([
           Animated.timing(flashOpacity, {
-            toValue: 0.7,
-            duration: 100,
+            toValue: enemyType === 'boss' ? 0.6 : 0.3,
+            duration: 80,
             useNativeDriver: true
           }),
           Animated.timing(flashOpacity, {
             toValue: 0,
-            duration: 400,
+            duration: enemyType === 'boss' ? 500 : 300,
             useNativeDriver: true
           }),
         ])
       );
     }
 
-    // 2. 崩壊リング
+    // 2. 内側の波紋（エリート・ボス用）
+    if (innerRippleCount > 0) {
+      innerRippleAnims.forEach((anim, index) => {
+        const delay = index * 50;
+        animations.push(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.parallel([
+              Animated.timing(anim.scale, {
+                toValue: 1.5 + index * 0.3,
+                duration: 400,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true
+              }),
+              Animated.sequence([
+                Animated.timing(anim.opacity, {
+                  toValue: 0.4,
+                  duration: 60,
+                  useNativeDriver: true
+                }),
+                Animated.timing(anim.opacity, {
+                  toValue: 0,
+                  duration: 340,
+                  easing: Easing.in(Easing.quad),
+                  useNativeDriver: true
+                }),
+              ]),
+            ]),
+          ])
+        );
+      });
+    }
+
+    // 3. 崩壊リング
     ringAnims.forEach((anim, index) => {
-      const delay = index * 30;
+      const delay = index * 25;
       const direction = index % 2 === 0 ? 1 : -1;
       animations.push(
         Animated.sequence([
           Animated.delay(delay),
           Animated.parallel([
             Animated.timing(anim.scale, {
-              toValue: 2 + index * 0.4,
-              duration: 500,
+              toValue: 2 + index * 0.35,
+              duration: enemyType === 'boss' ? 600 : 500,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.timing(anim.rotation, {
-              toValue: direction,
-              duration: 600,
+              toValue: direction * 0.3,
+              duration: 700,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.timing(anim.opacity, {
-                toValue: 0.6 - index * 0.05,
-                duration: 100,
+                toValue: 0.5 - index * 0.03,
+                duration: 80,
                 useNativeDriver: true
               }),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: 400,
+                duration: enemyType === 'boss' ? 520 : 420,
                 easing: Easing.in(Easing.quad),
                 useNativeDriver: true
               }),
@@ -194,9 +245,9 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       );
     });
 
-    // 3. フラグメント（飛散）
+    // 4. フラグメント（飛散）
     fragmentAnims.forEach((anim, index) => {
-      const delay = index * 15;
+      const delay = index * 12;
       const data = fragmentData[index];
       animations.push(
         Animated.sequence([
@@ -204,39 +255,39 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           Animated.parallel([
             Animated.timing(anim.progress, {
               toValue: 1,
-              duration: 500,
+              duration: 450,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.timing(anim.rotation, {
               toValue: data.rotationSpeed,
-              duration: 600,
+              duration: 550,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.spring(anim.scale, {
-                toValue: 1.2,
-                friction: 4,
-                tension: 120,
+                toValue: 1,
+                friction: 5,
+                tension: 100,
                 useNativeDriver: true
               }),
               Animated.timing(anim.scale, {
                 toValue: 0,
-                duration: 200,
+                duration: 180,
                 useNativeDriver: true
               }),
             ]),
             Animated.sequence([
               Animated.timing(anim.opacity, {
-                toValue: 1,
-                duration: 100,
+                toValue: 0.7,
+                duration: 80,
                 useNativeDriver: true
               }),
-              Animated.delay(300),
+              Animated.delay(250),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: 200,
+                duration: 180,
                 useNativeDriver: true
               }),
             ]),
@@ -245,29 +296,29 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       );
     });
 
-    // 4. パーティクル
+    // 5. パーティクル
     particleAnims.forEach((anim) => {
-      const delay = Math.random() * 50;
+      const delay = Math.random() * 40;
       animations.push(
         Animated.sequence([
           Animated.delay(delay),
           Animated.parallel([
             Animated.timing(anim.progress, {
               toValue: 1,
-              duration: 400 + Math.random() * 100,
+              duration: 350 + Math.random() * 100,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.timing(anim.opacity, {
-                toValue: 1,
-                duration: 50,
+                toValue: 0.8,
+                duration: 40,
                 useNativeDriver: true
               }),
-              Animated.delay(200),
+              Animated.delay(180),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: 200,
+                duration: 180,
                 useNativeDriver: true
               }),
             ]),
@@ -276,12 +327,12 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       );
     });
 
-    // 5. 中心シンボル
+    // 6. 中心シンボル
     animations.push(
       Animated.parallel([
         Animated.sequence([
           Animated.spring(symbolScale, {
-            toValue: 1.5,
+            toValue: enemyType === 'boss' ? 1.8 : enemyType === 'elite' ? 1.4 : 1,
             friction: 4,
             tension: 80,
             useNativeDriver: true
@@ -296,10 +347,10 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
         Animated.sequence([
           Animated.timing(symbolOpacity, {
             toValue: 1,
-            duration: 100,
+            duration: 80,
             useNativeDriver: true
           }),
-          Animated.delay(300),
+          Animated.delay(280),
           Animated.timing(symbolOpacity, {
             toValue: 0,
             duration: 200,
@@ -308,54 +359,59 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
         ]),
         Animated.timing(symbolRotation, {
           toValue: enemyType === 'boss' ? 2 : 1,
-          duration: 700,
+          duration: 650,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true
         }),
       ])
     );
 
-    // 6. ボス用：蓮の花 + テキスト
+    // 7. ボス用：蓮の花（複数レイヤー）
     if (enemyType === 'boss') {
-      animations.push(
-        Animated.parallel([
+      lotusAnims.forEach((anim, index) => {
+        const delay = 80 + index * 100;
+        const direction = index % 2 === 0 ? 1 : -1;
+        animations.push(
           Animated.sequence([
-            Animated.delay(100),
-            Animated.spring(lotusScale, {
-              toValue: 1,
-              friction: 3,
-              tension: 60,
-              useNativeDriver: true
-            }),
-            Animated.timing(lotusScale, {
-              toValue: 2,
-              duration: 800,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true
-            }),
-          ]),
-          Animated.sequence([
-            Animated.delay(100),
-            Animated.timing(lotusOpacity, {
-              toValue: 0.8,
-              duration: 200,
-              useNativeDriver: true
-            }),
-            Animated.delay(600),
-            Animated.timing(lotusOpacity, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true
-            }),
-          ]),
-          Animated.timing(lotusRotation, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true
-          }),
-        ])
-      );
+            Animated.delay(delay),
+            Animated.parallel([
+              Animated.sequence([
+                Animated.spring(anim.scale, {
+                  toValue: 1 + index * 0.3,
+                  friction: 4,
+                  tension: 50,
+                  useNativeDriver: true
+                }),
+                Animated.timing(anim.scale, {
+                  toValue: 2 + index * 0.5,
+                  duration: 700,
+                  easing: Easing.out(Easing.quad),
+                  useNativeDriver: true
+                }),
+              ]),
+              Animated.sequence([
+                Animated.timing(anim.opacity, {
+                  toValue: 0.6 - index * 0.15,
+                  duration: 180,
+                  useNativeDriver: true
+                }),
+                Animated.delay(400),
+                Animated.timing(anim.opacity, {
+                  toValue: 0,
+                  duration: 350,
+                  useNativeDriver: true
+                }),
+              ]),
+              Animated.timing(anim.rotation, {
+                toValue: direction * (0.3 + index * 0.1),
+                duration: 1200,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true
+              }),
+            ]),
+          ])
+        );
+      });
 
       // テキスト
       animations.push(
@@ -412,12 +468,12 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
     let path = '';
     for (let i = 0; i < petals; i++) {
       const angle = (i / petals) * Math.PI * 2 - Math.PI / 2;
-      const x1 = cx + radius * 0.2 * Math.cos(angle - 0.15);
-      const y1 = cy + radius * 0.2 * Math.sin(angle - 0.15);
+      const x1 = cx + radius * 0.2 * Math.cos(angle - 0.12);
+      const y1 = cy + radius * 0.2 * Math.sin(angle - 0.12);
       const x2 = cx + radius * Math.cos(angle);
       const y2 = cy + radius * Math.sin(angle);
-      const x3 = cx + radius * 0.2 * Math.cos(angle + 0.15);
-      const y3 = cy + radius * 0.2 * Math.sin(angle + 0.15);
+      const x3 = cx + radius * 0.2 * Math.cos(angle + 0.12);
+      const y3 = cy + radius * 0.2 * Math.sin(angle + 0.12);
       path += `M ${cx} ${cy} Q ${x1} ${y1} ${x2} ${y2} Q ${x3} ${y3} ${cx} ${cy} `;
     }
     return path;
@@ -431,8 +487,8 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       const angle2 = ((i + 0.5) / segments) * Math.PI * 2;
       const x1 = cx + radius * Math.cos(angle1);
       const y1 = cy + radius * Math.sin(angle1);
-      const x2 = cx + radius * 1.15 * Math.cos(angle2);
-      const y2 = cy + radius * 1.15 * Math.sin(angle2);
+      const x2 = cx + radius * 1.08 * Math.cos(angle2);
+      const y2 = cy + radius * 1.08 * Math.sin(angle2);
       const x3 = cx + radius * Math.cos(((i + 1) / segments) * Math.PI * 2);
       const y3 = cy + radius * Math.sin(((i + 1) / segments) * Math.PI * 2);
       path += `M ${x1} ${y1} Q ${x2} ${y2} ${x3} ${y3} `;
@@ -440,16 +496,19 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
     return path;
   };
 
-  const symbolSize = enemyType === 'boss' ? 20 : enemyType === 'elite' ? 15 : 10;
+  const symbolSize = enemyType === 'boss' ? 18 : enemyType === 'elite' ? 12 : 8;
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {/* ボス撃破時のフラッシュ */}
-      {enemyType === 'boss' && (
+      {/* フラッシュ */}
+      {(enemyType === 'boss' || enemyType === 'elite') && (
         <Animated.View
           style={[
             styles.flash,
-            { opacity: flashOpacity },
+            {
+              opacity: flashOpacity,
+              backgroundColor: enemyType === 'boss' ? '#FFD700' : '#FFA500',
+            },
           ]}
         />
       )}
@@ -470,9 +529,39 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
         </Animated.View>
       )}
 
+      {/* 内側の波紋（エリート・ボス用） */}
+      {innerRippleAnims.map((anim, index) => (
+        <Animated.View
+          key={`ripple-${index}`}
+          style={[
+            styles.ring,
+            {
+              left: x - 20,
+              top: y - 20,
+              width: 40,
+              height: 40,
+              opacity: anim.opacity,
+              transform: [{ scale: anim.scale }],
+            },
+          ]}
+        >
+          <Svg width={40} height={40}>
+            <Circle
+              cx={20}
+              cy={20}
+              r={16}
+              stroke={colors[index % colors.length]}
+              strokeWidth={0.3}
+              fill="none"
+              strokeDasharray="2,2"
+            />
+          </Svg>
+        </Animated.View>
+      ))}
+
       {/* 崩壊リング */}
       {ringAnims.map((anim, index) => {
-        const ringSize = 60 + index * 16;
+        const ringSize = 50 + index * 12;
         return (
           <Animated.View
             key={`ring-${index}`}
@@ -489,7 +578,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
                   {
                     rotate: anim.rotation.interpolate({
                       inputRange: [-1, 0, 1],
-                      outputRange: ['-180deg', '0deg', '180deg'],
+                      outputRange: ['-120deg', '0deg', '120deg'],
                     }),
                   },
                 ],
@@ -498,9 +587,9 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           >
             <Svg width={ringSize} height={ringSize}>
               <Path
-                d={createSacredRing(ringSize / 2, ringSize / 2, 20 + index * 8, 6 + index * 2)}
+                d={createSacredRing(ringSize / 2, ringSize / 2, ringSize / 3, 6 + index)}
                 stroke={colors[index % colors.length]}
-                strokeWidth={1.5 - index * 0.1}
+                strokeWidth={0.4}
                 fill="none"
               />
             </Svg>
@@ -511,7 +600,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       {/* フラグメント（飛散する幾何学図形） */}
       {fragmentData.map((data, index) => {
         const anim = fragmentAnims[index];
-        const fragSize = data.size * 2 + 4;
+        const fragSize = data.size * 2 + 2;
         return (
           <Animated.View
             key={`fragment-${index}`}
@@ -533,7 +622,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
                   {
                     translateY: anim.progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, Math.sin(data.angle) * data.distance - 30],
+                      outputRange: [0, Math.sin(data.angle) * data.distance - 20],
                     }),
                   },
                   { scale: anim.scale },
@@ -550,10 +639,9 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
             <Svg width={fragSize} height={fragSize}>
               <Path
                 d={createPolygon(fragSize / 2, fragSize / 2, data.size, data.sides)}
-                fill={data.color}
-                stroke={colors[0]}
+                fill="none"
+                stroke={data.color}
                 strokeWidth={0.5}
-                opacity={0.8}
               />
             </Svg>
           </Animated.View>
@@ -601,10 +689,10 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
         style={[
           styles.symbol,
           {
-            left: x - symbolSize - 5,
-            top: y - symbolSize - 5,
-            width: (symbolSize + 5) * 2,
-            height: (symbolSize + 5) * 2,
+            left: x - symbolSize - 4,
+            top: y - symbolSize - 4,
+            width: (symbolSize + 4) * 2,
+            height: (symbolSize + 4) * 2,
             opacity: symbolOpacity,
             transform: [
               { scale: symbolScale },
@@ -618,68 +706,74 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           },
         ]}
       >
-        <Svg width={(symbolSize + 5) * 2} height={(symbolSize + 5) * 2}>
+        <Svg width={(symbolSize + 4) * 2} height={(symbolSize + 4) * 2}>
           <Defs>
             <RadialGradient id="defeatGrad" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor={colors[0]} stopOpacity={0.8} />
-              <Stop offset="50%" stopColor={colors[1] || colors[0]} stopOpacity={0.4} />
+              <Stop offset="0%" stopColor={colors[0]} stopOpacity={0.6} />
+              <Stop offset="60%" stopColor={colors[1] || colors[0]} stopOpacity={0.3} />
               <Stop offset="100%" stopColor={colors[2] || colors[0]} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Circle
-            cx={symbolSize + 5}
-            cy={symbolSize + 5}
+            cx={symbolSize + 4}
+            cy={symbolSize + 4}
             r={symbolSize}
             fill="url(#defeatGrad)"
           />
           <Path
-            d={createPolygon(symbolSize + 5, symbolSize + 5, symbolSize - 2, 6)}
+            d={createPolygon(symbolSize + 4, symbolSize + 4, symbolSize - 2, 6)}
             stroke={colors[0]}
-            strokeWidth={2}
+            strokeWidth={0.5}
+            fill="none"
+          />
+          <Path
+            d={createPolygon(symbolSize + 4, symbolSize + 4, symbolSize * 0.5, 6)}
+            stroke={colors[1] || colors[0]}
+            strokeWidth={0.3}
             fill="none"
           />
         </Svg>
       </Animated.View>
 
-      {/* ボス用：蓮の花 */}
-      {enemyType === 'boss' && (
-        <Animated.View
-          style={[
-            styles.lotus,
-            {
-              left: x - 55,
-              top: y - 55,
-              opacity: lotusOpacity,
-              transform: [
-                { scale: lotusScale },
-                {
-                  rotate: lotusRotation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '120deg'],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <Svg width={110} height={110}>
-            <Path
-              d={createLotusPetals(55, 55, 50, 12)}
-              stroke="#FFD700"
-              strokeWidth={1}
-              fill="#E8B4D8"
-              fillOpacity={0.3}
-            />
-            <Path
-              d={createLotusPetals(55, 55, 35, 8)}
-              stroke="#9B59B6"
-              strokeWidth={0.8}
-              fill="#DDA0DD"
-              fillOpacity={0.25}
-            />
-          </Svg>
-        </Animated.View>
-      )}
+      {/* ボス用：蓮の花（複数レイヤー） */}
+      {enemyType === 'boss' && lotusAnims.map((anim, index) => {
+        const lotusSize = 90 + index * 30;
+        const petalCount = 10 + index * 4;
+        return (
+          <Animated.View
+            key={`lotus-${index}`}
+            style={[
+              styles.lotus,
+              {
+                left: x - lotusSize / 2,
+                top: y - lotusSize / 2,
+                width: lotusSize,
+                height: lotusSize,
+                opacity: anim.opacity,
+                transform: [
+                  { scale: anim.scale },
+                  {
+                    rotate: anim.rotation.interpolate({
+                      inputRange: [-1, 0, 1],
+                      outputRange: ['-120deg', '0deg', '120deg'],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Svg width={lotusSize} height={lotusSize}>
+              <Path
+                d={createLotusPetals(lotusSize / 2, lotusSize / 2, lotusSize / 2.5, petalCount)}
+                stroke={BOSS_COLORS[index * 2 % BOSS_COLORS.length]}
+                strokeWidth={0.4}
+                fill={BOSS_COLORS[(index * 2 + 1) % BOSS_COLORS.length]}
+                fillOpacity={0.15}
+              />
+            </Svg>
+          </Animated.View>
+        );
+      })}
     </View>
   );
 };
@@ -691,7 +785,6 @@ const styles = StyleSheet.create({
   },
   flash: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFD700',
   },
   textContainer: {
     position: 'absolute',
