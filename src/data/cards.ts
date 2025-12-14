@@ -2,6 +2,7 @@
 // 既存の500枚の概念カードをバトル用カードに変換
 
 import { Card, CardType, CardEffect, StatusType } from '../types/game';
+import { CardTags, CardCategory } from '../types/tags';
 import conceptsData from './concepts.json';
 
 // 既存の概念型
@@ -16,6 +17,57 @@ interface Concept {
 }
 
 const concepts: Concept[] = conceptsData as Concept[];
+
+// 著者名からauthorIdへのマッピング
+const authorNameToId: Record<string, string> = {
+  'ソクラテス': 'socrates',
+  'プラトン': 'plato',
+  'アリストテレス': 'aristotle',
+  'デカルト': 'descartes',
+  'スピノザ': 'spinoza',
+  'ライプニッツ': 'leibniz',
+  'カント': 'kant',
+  'ヘーゲル': 'hegel',
+  'フィヒテ': 'fichte',
+  'キルケゴール': 'kierkegaard',
+  'ショーペンハウアー': 'schopenhauer',
+  'ニーチェ': 'nietzsche',
+  'ハイデガー': 'heidegger',
+  'サルトル': 'sartre',
+  'カミュ': 'camus',
+  'フッサール': 'husserl',
+  'フロイト': 'freud',
+  'ユング': 'jung',
+  '鈴木大拙': 'suzuki_daisetz',
+  'パスカル': 'pascal',
+};
+
+// 著者名からauthorIdを取得
+const getAuthorId = (authorName?: string): string | undefined => {
+  if (!authorName) return undefined;
+  return authorNameToId[authorName];
+};
+
+// 既存カテゴリからCardCategoryへのマッピング
+const mapToCardCategory = (category: string): CardCategory => {
+  const mapping: Record<string, CardCategory> = {
+    'quote': 'quote',
+    'person': 'person',
+    'emotion': 'emotion',
+    'abstract': 'concept',
+    'action': 'action',
+    'mythology': 'mythology',
+    'science': 'science',
+    // その他のカテゴリはconceptにマップ
+    'philosophy': 'concept',
+    'psychology': 'concept',
+    'society': 'concept',
+    'culture': 'concept',
+    'modern': 'concept',
+    'literature': 'concept',
+  };
+  return mapping[category] || 'concept';
+};
 
 // 回復系カードかどうかを判定
 const isHealingCard = (name: string, category: string): boolean => {
@@ -907,6 +959,14 @@ const convertConceptToCard = (concept: Concept): Card => {
     cost = Math.max(cost, 2);
   }
 
+  // タグ情報を生成
+  const authorId = getAuthorId(concept.author);
+  const cardCategory = mapToCardCategory(concept.category);
+  const tags: CardTags = {
+    category: cardCategory,
+    ...(authorId && { authorId }),
+  };
+
   return {
     id: concept.id,
     name: concept.name,
@@ -917,6 +977,7 @@ const convertConceptToCard = (concept: Concept): Card => {
     category: concept.category,
     rarity: concept.rarity,
     flavorText: concept.description, // 元の説明をフレーバーテキストに
+    tags: tags,
   };
 };
 
