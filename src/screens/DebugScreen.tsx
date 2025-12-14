@@ -17,12 +17,14 @@ import { RewardScreen } from './RewardScreen';
 import { startNewRun, saveRunState } from '../store/runStore';
 import { getEliteEnemies, getNormalEnemies, getBossForFloor } from '../data/enemies';
 import { getRandomCard } from '../data/cards';
+import { DamageEffect, DefeatEffect, PsychedelicEffect } from '../components/effects';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 180;
 
-type DebugPhase = 'menu' | 'battle' | 'reward' | 'result';
-type TestMode = 'battle' | 'reward';
+type DebugPhase = 'menu' | 'battle' | 'reward' | 'result' | 'effects';
+type TestMode = 'battle' | 'reward' | 'effects';
+type EffectType = 'damage' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss' | 'psychedelic_normal' | 'psychedelic_boss';
 
 interface DebugScreenProps {
   onExit: () => void;
@@ -76,6 +78,11 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
 
   // === 設定項目 ===
   const [testMode, setTestMode] = useState<TestMode>('battle');
+
+  // エフェクトテスト用
+  const [selectedEffectType, setSelectedEffectType] = useState<EffectType>('damage');
+  const [showingEffect, setShowingEffect] = useState<boolean>(false);
+  const [effectKey, setEffectKey] = useState<number>(0);
 
   // 共通設定
   const [floor, setFloor] = useState<number>(1);
@@ -143,6 +150,14 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
 
   // テスト開始
   const startTest = async () => {
+    if (testMode === 'effects') {
+      // エフェクトテストはrunStateなしで直接表示
+      setShowingEffect(true);
+      setEffectKey(prev => prev + 1);
+      setPhase('effects');
+      return;
+    }
+
     const run = await createDebugRunState();
     setRunState(run);
 
@@ -280,6 +295,12 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                 >
                   <Text style={styles.modeButtonText}>🎁 報酬画面</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeButton, testMode === 'effects' && styles.selectedMode]}
+                  onPress={() => setTestMode('effects')}
+                >
+                  <Text style={styles.modeButtonText}>✨ エフェクト</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -385,8 +406,63 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               </View>
             )}
 
-            {/* プレイヤー状態 */}
-            <View style={styles.section}>
+            {/* エフェクト専用: エフェクト種類選択 */}
+            {testMode === 'effects' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>✨ エフェクト種類</Text>
+
+                <Text style={styles.label}>ダメージエフェクト</Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'damage' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('damage')}
+                  >
+                    <Text style={styles.effectButtonText}>💥 ダメージ</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.label}>敵撃破エフェクト</Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'defeat_normal' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('defeat_normal')}
+                  >
+                    <Text style={styles.effectButtonText}>💨 通常</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'defeat_elite' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('defeat_elite')}
+                  >
+                    <Text style={styles.effectButtonText}>💫 エリート</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'defeat_boss' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('defeat_boss')}
+                  >
+                    <Text style={styles.effectButtonText}>🌟 ボス</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.label}>報酬画面エフェクト</Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'psychedelic_normal' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('psychedelic_normal')}
+                  >
+                    <Text style={styles.effectButtonText}>🌀 通常</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.effectButton, selectedEffectType === 'psychedelic_boss' && styles.selectedEffect]}
+                    onPress={() => setSelectedEffectType('psychedelic_boss')}
+                  >
+                    <Text style={styles.effectButtonText}>🔮 ボス</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* プレイヤー状態（エフェクトモード以外） */}
+            {testMode !== 'effects' && <View style={styles.section}>
               <Text style={styles.sectionTitle}>👤 プレイヤー状態</Text>
 
               <Text style={styles.label}>HP: {hp} / {GAME_CONFIG.STARTING_HP}</Text>
@@ -423,21 +499,25 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            </View>}
 
             {/* テスト開始ボタン */}
             <TouchableOpacity style={styles.startButton} onPress={startTest}>
               <Text style={styles.startButtonText}>
-                {testMode === 'battle' ? '⚔️ バトル開始' : '🎁 報酬画面を開く'}
+                {testMode === 'battle' ? '⚔️ バトル開始' :
+                 testMode === 'reward' ? '🎁 報酬画面を開く' :
+                 '✨ エフェクト再生'}
               </Text>
             </TouchableOpacity>
 
             {/* 設定サマリー */}
             <View style={styles.summaryBox}>
               <Text style={styles.summaryText}>
-                {testMode === 'battle' ? '⚔️' : '🎁'} {nodeType === 'boss' ? 'ボス' : nodeType === 'elite' ? 'エリート' : '通常'} |
-                {floor}階 | HP:{hp} | ストック:{stockCount}
-                {testMode === 'battle' && ` | 敵:${enemyCount}体`}
+                {testMode === 'effects' ? (
+                  `✨ ${selectedEffectType.replace('_', ' ')}`
+                ) : (
+                  `${testMode === 'battle' ? '⚔️' : '🎁'} ${nodeType === 'boss' ? 'ボス' : nodeType === 'elite' ? 'エリート' : '通常'} | ${floor}階 | HP:${hp} | ストック:${stockCount}${testMode === 'battle' ? ` | 敵:${enemyCount}体` : ''}`
+                )}
               </Text>
             </View>
 
@@ -534,6 +614,106 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
           onSkip={() => setPhase('menu')}
           onTakeGold={() => console.log('Debug: Gold taken')}
         />
+      </View>
+    );
+  }
+
+  // エフェクトテスト画面
+  if (phase === 'effects') {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+    return (
+      <View style={styles.effectsContainer}>
+        <LinearGradient
+          colors={['#0a0a1a', '#1a1a3a', '#0a0a1a']}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* 戻るボタン */}
+        <TouchableOpacity
+          style={styles.effectsExitButton}
+          onPress={() => {
+            setShowingEffect(false);
+            setPhase('menu');
+          }}
+        >
+          <Text style={styles.rewardExitText}>← 戻る</Text>
+        </TouchableOpacity>
+
+        {/* エフェクト情報 */}
+        <View style={styles.effectsInfo}>
+          <Text style={styles.effectsInfoText}>
+            {selectedEffectType.replace('_', ' ').toUpperCase()}
+          </Text>
+        </View>
+
+        {/* 再生ボタン */}
+        <TouchableOpacity
+          style={styles.effectsReplayButton}
+          onPress={() => {
+            setShowingEffect(false);
+            setTimeout(() => {
+              setEffectKey(prev => prev + 1);
+              setShowingEffect(true);
+            }, 100);
+          }}
+        >
+          <Text style={styles.effectsReplayText}>🔄 再生</Text>
+        </TouchableOpacity>
+
+        {/* エフェクト表示 */}
+        {showingEffect && (
+          <>
+            {selectedEffectType === 'damage' && (
+              <DamageEffect
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={150}
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'defeat_normal' && (
+              <DefeatEffect
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                enemyType="normal"
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'defeat_elite' && (
+              <DefeatEffect
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                enemyType="elite"
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'defeat_boss' && (
+              <DefeatEffect
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                enemyType="boss"
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'psychedelic_normal' && (
+              <PsychedelicEffect
+                key={effectKey}
+                isBoss={false}
+              />
+            )}
+            {selectedEffectType === 'psychedelic_boss' && (
+              <PsychedelicEffect
+                key={effectKey}
+                isBoss={true}
+              />
+            )}
+          </>
+        )}
       </View>
     );
   }
@@ -868,5 +1048,76 @@ const styles = StyleSheet.create({
     color: '#f88',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  // エフェクトタイプ選択ボタン
+  effectButton: {
+    backgroundColor: '#3a2a5a',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedEffect: {
+    backgroundColor: '#5a3a8a',
+    borderColor: '#8a5aba',
+  },
+  effectButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // エフェクトテスト画面
+  effectsContainer: {
+    flex: 1,
+    backgroundColor: '#0a0a1a',
+  },
+  effectsExitButton: {
+    position: 'absolute',
+    top: 50,
+    left: 16,
+    zIndex: 100,
+    backgroundColor: 'rgba(255, 100, 100, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#f66',
+  },
+  effectsInfo: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  effectsInfoText: {
+    color: '#aaa',
+    fontSize: 14,
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  effectsReplayButton: {
+    position: 'absolute',
+    bottom: 60,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  effectsReplayText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    backgroundColor: '#3a6a8a',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
 });
