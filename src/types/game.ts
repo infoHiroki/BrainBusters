@@ -1,5 +1,7 @@
 // ゲーム全体の型定義
 
+import { CardTags } from './tags';
+
 // カードタイプ
 export type CardType = 'attack' | 'defense' | 'skill';
 
@@ -44,6 +46,7 @@ export interface Card {
   rarity: 1 | 2 | 3 | 4 | 5;
   flavorText?: string;      // フレーバーテキスト
   upgraded?: boolean;       // 強化済みフラグ
+  tags?: CardTags;          // タグ情報（著者、カテゴリ、著作）
 }
 
 // カードインスタンス（デッキ内の個別カード）
