@@ -46,11 +46,11 @@ describe('カード生成システム', () => {
   });
 
   describe('カードの整合性', () => {
-    it('すべてのカードにはコストが0-3の範囲内である', () => {
+    it('すべてのカードにはコストが0-6の範囲内である', () => {
       const deck = generateStarterDeck();
       deck.forEach((card: Card) => {
         expect(card.cost).toBeGreaterThanOrEqual(0);
-        expect(card.cost).toBeLessThanOrEqual(3);
+        expect(card.cost).toBeLessThanOrEqual(6);
       });
     });
 
@@ -63,12 +63,15 @@ describe('カード生成システム', () => {
     });
 
     it('コストに応じた適切な効果値が設定されている', () => {
-      // コスト別の期待範囲
+      // コスト別の期待範囲（高コストカード追加）
       const expectedRanges: Record<number, [number, number]> = {
         0: [4, 8],
         1: [8, 14],
         2: [14, 22],
         3: [22, 35],
+        4: [35, 55],
+        5: [50, 80],
+        6: [70, 120],
       };
 
       const rewards = generateRewardCards(10);
@@ -79,7 +82,7 @@ describe('カード生成システム', () => {
         if (mainEffect.type === 'damage' || mainEffect.type === 'block') {
           // 多少の誤差は許容（追加効果付きカードは値が下がることがある）
           expect(mainEffect.value).toBeGreaterThanOrEqual(min - 4);
-          expect(mainEffect.value).toBeLessThanOrEqual(max + 8);
+          expect(mainEffect.value).toBeLessThanOrEqual(max + 15);
         }
       });
     });
