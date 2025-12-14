@@ -169,7 +169,7 @@ export const BattleCard: React.FC<BattleCardProps> = ({
           paddingVertical: 3 * sizeRatio,
           paddingHorizontal: 6 * sizeRatio,
         }]}>
-          <Text style={[styles.cardName, { fontSize: 11 * sizeRatio }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
+          <Text style={[styles.cardName, { fontSize: 13 * sizeRatio }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
             {card.name}
           </Text>
         </View>
@@ -188,7 +188,7 @@ export const BattleCard: React.FC<BattleCardProps> = ({
 
         {/* 効果テキストエリア */}
         <View style={styles.effectArea}>
-          <Text style={[styles.effectText, { fontSize: 10 * sizeRatio, lineHeight: 13 * sizeRatio }]} numberOfLines={3}>
+          <Text style={[styles.effectText, { fontSize: 11 * sizeRatio, lineHeight: 14 * sizeRatio }]} numberOfLines={3}>
             {description}
           </Text>
         </View>
