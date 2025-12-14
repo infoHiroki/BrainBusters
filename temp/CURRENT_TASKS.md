@@ -66,10 +66,25 @@
 
 ---
 
-## Phase 3: 概念タグシステム（優先度: 中）
-- [ ] タグ定義（実存主義、合理主義、感情など）
-- [ ] 500概念へのタグ付与
-- [ ] コンボ判定ロジック（同タグ連続で効果UP）
+## Phase 3: タグ・コンボシステム（優先度: 中）✅ 完了
+
+### Phase 3-1: データ基盤 ✅
+- [x] 型定義（src/types/tags.ts）
+- [x] 著者マスター（src/data/authors.ts）- 20名
+- [x] 関係性データ（src/data/relations.ts）- 21組
+- [x] Card型拡張（src/types/game.ts）
+- [x] cards.tsで自動タグ解決（authorId）
+
+### Phase 3-2: コンボエンジン ✅
+- [x] コンボ定義（src/data/combos.ts）- 14種
+- [x] コンボ判定（src/utils/comboDetection.ts）
+
+### Phase 3-3: 演出・UI ✅
+- [x] コンボ演出（src/components/ComboDisplay.tsx）
+- [x] BattleScreen統合
+
+### 設計書
+- `/Users/hirokitakamura/.claude/plans/soft-waddling-matsumoto.md`
 
 ---
 
@@ -95,6 +110,16 @@
   - 3D回転式でカードをスクロール選択
   - 中央のカードが大きく表示される
   - 左右のカードは小さく奥に見える演出
+
+## 未来機能（ゲームコンテンツ）
+- [ ] 敵キャラを哲学的テーマ化
+  - 例: 「意識とは何か」「クオリア」「生老病死」
+  - 哲学的な問いや概念を敵として具現化
+  - カードの概念と関連付けてシナジーを作る
+
+## 未来機能（敵表示改善）
+- [ ] 敵キャラのサイズ拡大
+- [ ] HPバーの視認性向上（見づらい）
 
 ---
 
