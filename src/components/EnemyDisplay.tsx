@@ -101,7 +101,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </View>
       )}
 
-      {/* HPバー */}
+      {/* HPバー（テキスト内蔵） */}
       <View style={styles.hpBarContainer}>
         <View style={styles.hpBarBackground}>
           <LinearGradient
@@ -110,10 +110,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           />
+          {/* HPテキストをバー内に表示 */}
+          <View style={styles.hpTextOverlay}>
+            <Text style={styles.hpText}>
+              {enemy.hp} / {enemy.maxHp}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.hpText}>
-          {enemy.hp} / {enemy.maxHp}
-        </Text>
       </View>
     </View>
   );
@@ -180,10 +183,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   enemyBody: {
-    width: 140,
-    height: 100,
-    borderRadius: 12,
-    padding: 12,
+    width: 160,
+    height: 120,
+    borderRadius: 14,
+    padding: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
@@ -226,7 +229,7 @@ const styles = StyleSheet.create({
   },
   enemyName: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -239,9 +242,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 6,
     gap: 4,
-    maxWidth: 140,
+    maxWidth: 160,
   },
   blockBadge: {
     backgroundColor: 'rgba(52, 152, 219, 0.9)',
@@ -267,25 +270,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   hpBarContainer: {
-    width: 140,
-    marginTop: 6,
+    width: 160,
+    marginTop: 8,
     alignItems: 'center',
   },
   hpBarBackground: {
     width: '100%',
-    height: 12,
-    backgroundColor: '#333',
-    borderRadius: 6,
+    height: 20,
+    backgroundColor: '#222',
+    borderRadius: 10,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#444',
+    position: 'relative',
   },
   hpBarFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 10,
+  },
+  hpTextOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   hpText: {
-    color: '#ccc',
+    color: '#fff',
     fontSize: 12,
-    marginTop: 4,
     fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
