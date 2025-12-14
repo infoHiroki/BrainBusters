@@ -727,15 +727,20 @@ export const generateBoss = (floor: number): Enemy | undefined => {
 };
 
 // 戦闘用の敵グループを生成
-export const generateEnemyGroup = (floor: number, nodeType: 'battle' | 'elite' | 'boss'): Enemy[] => {
+// overrideCount: デバッグ用に敵数を強制指定（通常・エリートのみ有効）
+export const generateEnemyGroup = (
+  floor: number,
+  nodeType: 'battle' | 'elite' | 'boss',
+  overrideCount?: number
+): Enemy[] => {
   if (nodeType === 'boss') {
     const boss = generateBoss(floor);
     return boss ? [boss] : [];
   }
 
   if (nodeType === 'elite') {
-    // エリート戦：1-2体
-    const eliteCount = Math.random() < 0.3 ? 2 : 1;
+    // エリート戦：overrideCountがあればその数、なければ1-2体
+    const eliteCount = overrideCount ?? (Math.random() < 0.3 ? 2 : 1);
     const elites: Enemy[] = [];
     for (let i = 0; i < eliteCount; i++) {
       elites.push(generateEliteEnemy());
@@ -743,10 +748,11 @@ export const generateEnemyGroup = (floor: number, nodeType: 'battle' | 'elite' |
     return elites;
   }
 
-  // 通常戦闘：階層に応じて1-3体
-  // 序盤: 1-2体、中盤以降: 2-3体
+  // 通常戦闘：overrideCountがあればその数、なければ階層に応じて1-3体
   let enemyCount: number;
-  if (floor <= 9) {
+  if (overrideCount !== undefined) {
+    enemyCount = overrideCount;
+  } else if (floor <= 9) {
     enemyCount = Math.random() < 0.4 ? 2 : 1;
   } else if (floor <= 14) {
     enemyCount = Math.random() < 0.5 ? 2 : Math.random() < 0.5 ? 3 : 1;

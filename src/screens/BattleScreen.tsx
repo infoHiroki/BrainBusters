@@ -149,12 +149,16 @@ interface BattleScreenProps {
   runState: RunState;
   onBattleEnd: (victory: boolean, updatedRunState: RunState, enemiesDefeated?: number) => void;
   nodeType?: 'battle' | 'elite' | 'boss';  // デバッグ用: ノードタイプを強制指定
+  enemyCount?: number;  // デバッグ用: 敵数を強制指定
+  onDebugExit?: () => void;  // デバッグ用: 戦闘中断ボタン
 }
 
 export const BattleScreen: React.FC<BattleScreenProps> = ({
   runState,
   onBattleEnd,
   nodeType,
+  enemyCount,
+  onDebugExit,
 }) => {
   // バトル状態
   const [battleState, setBattleState] = useState<BattleState | null>(null);
@@ -193,8 +197,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // バトル初期化
   useEffect(() => {
     const initBattle = () => {
-      // バトル状態を初期化（nodeTypeが指定されていれば使用）
-      const newBattleState = initBattleState(runState, nodeType);
+      // バトル状態を初期化（nodeType/enemyCountが指定されていれば使用）
+      const newBattleState = initBattleState(runState, nodeType, enemyCount);
       setBattleState(newBattleState);
 
       // シェイクアニメーションを初期化
@@ -1316,6 +1320,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
       {/* ヘッダー（コンパクト） */}
       <View style={styles.header}>
+        {/* デバッグ用戻るボタン */}
+        {onDebugExit && (
+          <TouchableOpacity style={styles.debugExitButton} onPress={onDebugExit}>
+            <Text style={styles.debugExitText}>← 中断</Text>
+          </TouchableOpacity>
+        )}
         <View style={styles.floorBadge}>
           <Text style={styles.floorText}>{runState.floor}F</Text>
         </View>
@@ -1577,6 +1587,20 @@ const styles = StyleSheet.create({
   turnText: {
     color: '#aaa',
     fontSize: 14,
+  },
+  // デバッグ用戻るボタン
+  debugExitButton: {
+    backgroundColor: 'rgba(255, 100, 100, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#f66',
+  },
+  debugExitText: {
+    color: '#f88',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   // レリックアイコン
   relicIconButton: {

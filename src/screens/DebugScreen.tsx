@@ -273,6 +273,8 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
         runState={runState}
         onBattleEnd={handleBattleEnd}
         nodeType={battleConfig.type === 'boss' ? 'boss' : battleConfig.type === 'elite' ? 'elite' : 'battle'}
+        enemyCount={battleConfig.enemyCount}
+        onDebugExit={() => setPhase('menu')}
       />
     );
   }
