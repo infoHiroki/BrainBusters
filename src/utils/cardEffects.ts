@@ -353,39 +353,96 @@ export const getCardDescription = (
 ): string => {
   const descriptions: string[] = [];
 
+  // ギャンブルカードはランダム範囲を表示
+  const isGamble = (card as any).isGamble;
+
   for (const effect of card.effects) {
+    // ランダム範囲がある場合（ギャンブルカード）
+    const randomRange = (effect as any).randomRange;
+
     switch (effect.type) {
       case 'damage':
-        const damage = calculateDamage(effect.value, playerStatuses, []);
-        if (effect.target === 'all_enemies') {
-          descriptions.push(`全ての敵に${damage}ダメージ`);
+        if (randomRange) {
+          // ギャンブル: ランダム範囲を表示
+          const prefix = effect.target === 'all_enemies' ? '全体' : '';
+          descriptions.push(`🎲${prefix}${randomRange[0]}〜${randomRange[1]}ダメージ`);
         } else {
-          descriptions.push(`${damage}ダメージ`);
+          const damage = calculateDamage(effect.value, playerStatuses, []);
+          if (effect.target === 'all_enemies') {
+            descriptions.push(`全体${damage}ダメージ`);
+          } else {
+            descriptions.push(`${damage}ダメージ`);
+          }
         }
         break;
       case 'block':
-        const block = calculateBlock(effect.value, playerStatuses);
-        descriptions.push(`${block}ブロック`);
+        if (randomRange) {
+          descriptions.push(`🎲${randomRange[0]}〜${randomRange[1]}ブロック`);
+        } else {
+          const block = calculateBlock(effect.value, playerStatuses);
+          descriptions.push(`${block}ブロック`);
+        }
         break;
       case 'draw':
-        descriptions.push(`${effect.value}枚ドロー`);
+        if (randomRange) {
+          descriptions.push(`🎲${randomRange[0]}〜${randomRange[1]}枚ドロー`);
+        } else {
+          descriptions.push(`${effect.value}枚ドロー`);
+        }
         break;
       case 'energy':
-        descriptions.push(`${effect.value}エネルギー獲得`);
+        if (randomRange) {
+          descriptions.push(`🎲${randomRange[0]}〜${randomRange[1]}エネルギー`);
+        } else {
+          descriptions.push(`${effect.value}エネルギー獲得`);
+        }
         break;
       case 'heal':
-        descriptions.push(`${effect.value}回復`);
+        if (randomRange) {
+          descriptions.push(`🎲${randomRange[0]}〜${randomRange[1]}回復`);
+        } else {
+          descriptions.push(`${effect.value}回復`);
+        }
+        break;
+      case 'self_damage':
+        // HPコスト
+        if (randomRange) {
+          descriptions.push(`⚠️HP${randomRange[0]}〜${randomRange[1]}消費`);
+        } else {
+          descriptions.push(`⚠️HP${effect.value}消費`);
+        }
         break;
       case 'buff':
         const buffName = getStatusName(effect.statusType!);
-        descriptions.push(`${buffName}を${effect.value}獲得`);
+        descriptions.push(`${buffName}+${effect.value}`);
         break;
       case 'debuff':
         const debuffName = getStatusName(effect.statusType!);
-        const target = effect.target === 'all_enemies' ? '全ての敵に' : '敵に';
-        descriptions.push(`${target}${debuffName}を${effect.value}付与`);
+        const target = effect.target === 'all_enemies' ? '全体' : '敵';
+        descriptions.push(`${target}${debuffName}+${effect.value}`);
         break;
     }
+  }
+
+  // 条件付きカードの条件表示
+  const playCondition = (card as any).playCondition;
+  const conditionBonus = (card as any).conditionBonus;
+  if (playCondition && conditionBonus) {
+    let conditionText = '';
+    switch (playCondition) {
+      case 'hp_below_50':
+        conditionText = 'HP50%以下で効果2倍';
+        break;
+      case 'hp_above_50':
+        conditionText = 'HP50%以上で効果2倍';
+        break;
+      case 'low_hp':
+        conditionText = 'HP30%以下で効果UP';
+        break;
+      default:
+        conditionText = '条件達成で効果UP';
+    }
+    descriptions.push(`💡${conditionText}`);
   }
 
   return descriptions.join('。');
