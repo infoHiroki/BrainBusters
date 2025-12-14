@@ -86,7 +86,7 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
       case 'heal': return '#33ff33';
       case 'buff': return '#ffaa00';
       case 'debuff': return '#aa44ff';
-      case 'draw': return '#ffdd55';
+      case 'draw': return '#44dd88';
       case 'energy': return '#ffcc00';
     }
   };
