@@ -776,9 +776,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 勝利判定
     if (isBattleWon({ ...battleState, enemies: result.enemies })) {
+      // ボス撃破時は長めの遅延（エフェクト完了まで）
+      const hasBossKill = result.enemiesKilled.some(idx => battleState.enemies[idx]?.isBoss);
+      const victoryDelay = hasBossKill ? 2200 : 900;
       setTimeout(() => {
         handleBattleEnd(true);
-      }, 500);
+      }, victoryDelay);
       setIsProcessing(false);
       isProcessingRef.current = false;
       return;
@@ -963,9 +966,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 勝利判定
     if (isBattleWon({ ...battleState, enemies: result.enemies })) {
+      // ボス撃破時は長めの遅延（エフェクト完了まで）
+      const hasBossKill = result.enemiesKilled.some(idx => battleState.enemies[idx]?.isBoss);
+      const victoryDelay = hasBossKill ? 2200 : 900;
       setTimeout(() => {
         handleBattleEnd(true);
-      }, 500);
+      }, victoryDelay);
       setIsProcessing(false);
       isProcessingRef.current = false;
       return;
