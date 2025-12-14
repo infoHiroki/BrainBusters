@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RunState, Card, GAME_CONFIG } from '../types/game';
 import { BattleScreen } from './BattleScreen';
 import { RewardScreen } from './RewardScreen';
-import { startNewRun } from '../store/runStore';
+import { startNewRun, saveRunState } from '../store/runStore';
 import { getEliteEnemies, getNormalEnemies, getBossForFloor } from '../data/enemies';
 import { getRandomCard } from '../data/cards';
 
@@ -74,7 +74,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
       completed: false,
     };
 
-    return {
+    const debugRunState: RunState = {
       ...baseRun,
       floor,
       hp,
@@ -84,6 +84,11 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
       map: [node as any],
       currentNodeId: nodeId,
     };
+
+    // デバッグ用RunStateをストレージに保存（useStockCard等が正しく動作するように）
+    await saveRunState(debugRunState);
+
+    return debugRunState;
   };
 
   // テスト開始
@@ -118,8 +123,10 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
     console.log('Debug: Replace stock card', index, card.name);
   };
 
-  // 階層選択肢
-  const floorOptions = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  // 階層選択肢（ボスタイプ時はボス階層のみ）
+  const floorOptions = nodeType === 'boss'
+    ? GAME_CONFIG.BOSS_FLOORS
+    : [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
   // 敵数の上限（ノードタイプによって変わる）
   const getMaxEnemyCount = () => {
@@ -193,6 +200,10 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                 onPress={() => {
                   setNodeType('boss');
                   setEnemyCount(1);
+                  // 現在の階層がボス階層でない場合、最初のボス階層に変更
+                  if (!(GAME_CONFIG.BOSS_FLOORS as readonly number[]).includes(floor)) {
+                    setFloor(5);
+                  }
                 }}
               >
                 <Text style={styles.typeButtonText}>ボス</Text>
