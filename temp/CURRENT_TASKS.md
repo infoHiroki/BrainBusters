@@ -18,9 +18,17 @@
 
 ### 重要ファイル
 - `src/screens/BattleScreen.tsx` - バトル画面のメインロジック
+- `src/screens/DebugScreen.tsx` - デバッグ画面（開発用）
 - `src/data/cards.ts` - カード生成・効果テンプレート
 - `src/types/game.ts` - ゲーム設定（GAME_CONFIG）
 - `src/store/runStore.ts` - ゲーム状態管理
+
+### 開発ツール
+- **デバッグモード**: タイトル画面に「デバッグ」ボタン（開発モード時のみ表示）
+  - バトルテスト: 任意の階層・敵数・敵タイプでバトル開始
+  - 報酬画面テスト: 通常/ボス報酬をテスト
+  - ゲーム設定確認: GAME_CONFIG値の確認
+  - 敵情報表示: 各階層の敵種類数を確認
 
 ---
 

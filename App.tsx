@@ -6,10 +6,14 @@ import { StatusBar } from 'expo-status-bar';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { RunScreen } from './src/screens/RunScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { DebugScreen } from './src/screens/DebugScreen';
 import { loadStats, GameStats } from './src/store/statsStore';
 import { clearRunState } from './src/store/runStore';
 
-type Screen = 'title' | 'run' | 'settings';
+// 開発モードフラグ（本番リリース時はfalseに）
+const DEV_MODE = __DEV__;
+
+type Screen = 'title' | 'run' | 'settings' | 'debug';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('title');
@@ -59,6 +63,7 @@ export default function App() {
           onContinue={handleContinue}
           onNewGame={handleNewGame}
           onSettings={() => setCurrentScreen('settings')}
+          onDebug={DEV_MODE ? () => setCurrentScreen('debug') : undefined}
         />
       </SafeAreaView>
     );
@@ -73,6 +78,16 @@ export default function App() {
           onBack={() => setCurrentScreen('title')}
           onStatsReset={handleStatsUpdate}
         />
+      </SafeAreaView>
+    );
+  }
+
+  // デバッグ画面
+  if (currentScreen === 'debug') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <DebugScreen onExit={() => setCurrentScreen('title')} />
       </SafeAreaView>
     );
   }

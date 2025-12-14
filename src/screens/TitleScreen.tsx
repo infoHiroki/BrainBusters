@@ -16,12 +16,14 @@ interface TitleScreenProps {
   onContinue: () => void;
   onNewGame: () => void;
   onSettings: () => void;
+  onDebug?: () => void;
 }
 
 export const TitleScreen: React.FC<TitleScreenProps> = ({
   onContinue,
   onNewGame,
   onSettings,
+  onDebug,
 }) => {
   const [hasSaveData, setHasSaveData] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -50,7 +52,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   }, []);
 
   // メニュー項目
-  const menuItems = hasSaveData
+  const baseMenuItems = hasSaveData
     ? [
         { label: 'つづきから', action: onContinue },
         { label: 'はじめから', action: onNewGame },
@@ -60,6 +62,11 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         { label: 'はじめから', action: onNewGame },
         { label: '設定', action: onSettings },
       ];
+
+  // デバッグモードがある場合は追加
+  const menuItems = onDebug
+    ? [...baseMenuItems, { label: 'デバッグ', action: onDebug }]
+    : baseMenuItems;
 
   return (
     <View style={styles.container}>

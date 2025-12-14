@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   },
   selectedMessage: {
     color: '#FFD700',
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'center',
     fontWeight: 'bold',
   },
@@ -572,13 +572,15 @@ const styles = StyleSheet.create({
   },
   stockWarning: {
     color: '#F59E0B',
-    fontSize: 12,
+    fontSize: 16,
+    fontWeight: 'bold',
     marginTop: 8,
     textAlign: 'center',
   },
   stockInfo: {
     color: '#3B82F6',
-    fontSize: 12,
+    fontSize: 16,
+    fontWeight: 'bold',
     marginTop: 4,
     textAlign: 'center',
   },
@@ -597,7 +599,7 @@ const styles = StyleSheet.create({
   },
   replaceButtonText: {
     color: '#3B82F6',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   replaceSection: {
@@ -607,7 +609,7 @@ const styles = StyleSheet.create({
   },
   replaceSectionTitle: {
     color: '#3B82F6',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
   },
