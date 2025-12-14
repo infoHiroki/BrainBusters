@@ -42,8 +42,8 @@ const CARD_HEIGHT = 215;
 interface FloatingNumber {
   id: string;
   value: number;
-  type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff';
-  label?: string;  // バフ・デバフ名
+  type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff' | 'draw' | 'energy';
+  label?: string;  // バフ・デバフ名など
   x: number;
   y: number;
 }
@@ -86,6 +86,8 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
       case 'heal': return '#33ff33';
       case 'buff': return '#ffaa00';
       case 'debuff': return '#aa44ff';
+      case 'draw': return '#ffdd55';
+      case 'energy': return '#ffcc00';
     }
   };
   const color = getColor();
@@ -99,16 +101,18 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
       case 'heal': return `+${number.value}`;
       case 'buff': return `${number.label}+${number.value}`;
       case 'debuff': return `${number.label}+${number.value}`;
+      case 'draw': return `+${number.value}枚`;
+      case 'energy': return `+${number.value}⚡`;
     }
   };
 
-  // バフ・デバフはラベル付きで幅が必要、サイズも小さめ
-  const isBuffDebuff = number.type === 'buff' || number.type === 'debuff';
+  // バフ・デバフ・ドロー・エネルギーはセンター表示・サイズ小さめ
+  const isSpecialEffect = number.type === 'buff' || number.type === 'debuff' || number.type === 'draw' || number.type === 'energy';
 
   return (
     <Animated.View style={[
       styles.floatingNumber,
-      isBuffDebuff ? {
+      isSpecialEffect ? {
         left: 0,
         right: 0,
         top: number.y + 60,  // ダメージ表示とずらす
@@ -132,7 +136,7 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
           textShadowColor: '#000',
           textShadowOffset: { width: 2, height: 2 },
           textShadowRadius: 3,
-          fontSize: isBuffDebuff ? 32 : 48,  // バフ・デバフは小さめ
+          fontSize: isSpecialEffect ? 32 : 48,  // 特殊エフェクトは小さめ
         }
       ]} numberOfLines={1}>
         {getText()}
@@ -258,7 +262,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // フローティングダメージを追加（効果音付き）
   const addFloatingNumber = (
     value: number,
-    type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff',
+    type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff' | 'draw' | 'energy',
     x: number,
     y: number,
     label?: string
@@ -634,10 +638,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 追加ドロー
     if (result.cardsDrawn > 0) {
+      addFloatingNumber(result.cardsDrawn, 'draw', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
       const drawResult = drawCards(drawPile, discardPile, hand, result.cardsDrawn);
       setHand(drawResult.hand);
       setDrawPile(drawResult.drawPile);
       setDiscardPile(drawResult.discardPile);
+    }
+
+    // エネルギー獲得
+    if (result.energyGained > 0) {
+      addFloatingNumber(result.energyGained, 'energy', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
     }
 
     // ストックカードを使用済みにする（永続保存）
@@ -796,11 +806,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // 追加ドロー
     let finalHand = playResult.hand;
     if (result.cardsDrawn > 0) {
+      addFloatingNumber(result.cardsDrawn, 'draw', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
       const drawResult = drawCards(drawPile, playResult.discardPile, playResult.hand, result.cardsDrawn);
       setHand(drawResult.hand);
       setDrawPile(drawResult.drawPile);
       setDiscardPile(drawResult.discardPile);
       finalHand = drawResult.hand;
+    }
+
+    // エネルギー獲得
+    if (result.energyGained > 0) {
+      addFloatingNumber(result.energyGained, 'energy', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
     }
 
     // 勝利判定
