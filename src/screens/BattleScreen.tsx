@@ -100,7 +100,7 @@ const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void 
       case 'blocked': return `${number.value}`;
       case 'heal': return `+${number.value}`;
       case 'buff': return `${number.label}+${number.value}`;
-      case 'debuff': return `${number.label}+${number.value}`;
+      case 'debuff': return `${number.label}${number.value}`;
       case 'draw': return `+${number.value}枚`;
       case 'energy': return `+${number.value}⚡`;
     }
