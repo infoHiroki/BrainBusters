@@ -107,6 +107,12 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
     setTestMode(preset.testMode);
     if (preset.effectType) {
       setSelectedEffectType(preset.effectType);
+      // エフェクトプリセットを選んだら即座に再生
+      setShowingEffect(false);
+      setTimeout(() => {
+        setEffectKey(prev => prev + 1);
+        setShowingEffect(true);
+      }, 50);
     }
     setNodeType(preset.nodeType);
     setFloor(preset.floor);
@@ -162,10 +168,12 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   // テスト開始
   const startTest = async () => {
     if (testMode === 'effects') {
-      // エフェクトテストはrunStateなしで直接表示
-      setShowingEffect(true);
-      setEffectKey(prev => prev + 1);
-      setPhase('effects');
+      // エフェクトはインラインで再生
+      setShowingEffect(false);
+      setTimeout(() => {
+        setEffectKey(prev => prev + 1);
+        setShowingEffect(true);
+      }, 50);
       return;
     }
 
@@ -552,6 +560,82 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                 )}
               </Text>
             </View>
+
+            {/* エフェクトインライン表示エリア */}
+            {testMode === 'effects' && (
+              <View style={styles.effectPreviewArea}>
+                <View style={styles.effectPreviewContainer}>
+                  {showingEffect && (
+                    <>
+                      {selectedEffectType === 'damage' && (
+                        <DamageEffect
+                          key={effectKey}
+                          x={140}
+                          y={100}
+                          damage={150}
+                          onComplete={() => {}}
+                        />
+                      )}
+                      {selectedEffectType === 'defeat_normal' && (
+                        <DefeatEffect
+                          key={effectKey}
+                          x={140}
+                          y={100}
+                          enemyType="normal"
+                          onComplete={() => {}}
+                        />
+                      )}
+                      {selectedEffectType === 'defeat_elite' && (
+                        <DefeatEffect
+                          key={effectKey}
+                          x={140}
+                          y={100}
+                          enemyType="elite"
+                          onComplete={() => {}}
+                        />
+                      )}
+                      {selectedEffectType === 'defeat_boss' && (
+                        <DefeatEffect
+                          key={effectKey}
+                          x={140}
+                          y={100}
+                          enemyType="boss"
+                          onComplete={() => {}}
+                        />
+                      )}
+                      {selectedEffectType === 'psychedelic_normal' && (
+                        <View style={styles.psychedelicPreview}>
+                          <PsychedelicEffect
+                            key={effectKey}
+                            isBoss={false}
+                          />
+                        </View>
+                      )}
+                      {selectedEffectType === 'psychedelic_boss' && (
+                        <View style={styles.psychedelicPreview}>
+                          <PsychedelicEffect
+                            key={effectKey}
+                            isBoss={true}
+                          />
+                        </View>
+                      )}
+                    </>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={styles.effectReplayInline}
+                  onPress={() => {
+                    setShowingEffect(false);
+                    setTimeout(() => {
+                      setEffectKey(prev => prev + 1);
+                      setShowingEffect(true);
+                    }, 50);
+                  }}
+                >
+                  <Text style={styles.effectReplayInlineText}>🔄 再生</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -1151,5 +1235,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  // インラインエフェクトプレビュー
+  effectPreviewArea: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 90, 186, 0.3)',
+  },
+  effectPreviewContainer: {
+    height: 250,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#0a0a1a',
+  },
+  psychedelicPreview: {
+    ...StyleSheet.absoluteFillObject,
+    transform: [{ scale: 0.5 }],
+  },
+  effectReplayInline: {
+    backgroundColor: '#3a5a7a',
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  effectReplayInlineText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
