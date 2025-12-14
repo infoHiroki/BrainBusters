@@ -1,7 +1,7 @@
 // 敵撃破エフェクトコンポーネント
 // 敵を倒した時のパーティクルと崩壊アニメーション
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -38,7 +38,6 @@ export const DefeatEffect: React.FC<DefeatEffectProps> = ({
   enemyType,
   onComplete,
 }) => {
-  const particles = useRef<Particle[]>([]).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
@@ -52,15 +51,14 @@ export const DefeatEffect: React.FC<DefeatEffectProps> = ({
 
   const { count, emojis, colors, showText } = config[enemyType];
 
-  useEffect(() => {
-    const animations: Animated.CompositeAnimation[] = [];
-
-    // パーティクル生成
+  // パーティクルを初期化時に生成（useMemoで一度だけ）
+  const particles = useMemo<Particle[]>(() => {
+    const result: Particle[] = [];
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
       const distance = 60 + Math.random() * 80;
 
-      const particle: Particle = {
+      result.push({
         id: `particle-${i}`,
         x: new Animated.Value(0),
         y: new Animated.Value(0),
@@ -68,28 +66,37 @@ export const DefeatEffect: React.FC<DefeatEffectProps> = ({
         scale: new Animated.Value(0),
         rotation: new Animated.Value(0),
         targetX: Math.cos(angle) * distance,
-        targetY: Math.sin(angle) * distance - 30, // 少し上向きに
+        targetY: Math.sin(angle) * distance - 30,
         emoji: emojis[Math.floor(Math.random() * emojis.length)],
         color: colors[Math.floor(Math.random() * colors.length)],
-      };
-      particles.push(particle);
+      });
+    }
+    return result;
+  }, [count, emojis, colors]);
+
+  useEffect(() => {
+    const animations: Animated.CompositeAnimation[] = [];
+
+    // パーティクルアニメーション
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
 
       const particleAnim = Animated.parallel([
         // 移動
         Animated.timing(particle.x, {
           toValue: particle.targetX,
-          duration: 500 + Math.random() * 200,
+          duration: 500,
           useNativeDriver: true,
         }),
         Animated.timing(particle.y, {
           toValue: particle.targetY,
-          duration: 500 + Math.random() * 200,
+          duration: 500,
           useNativeDriver: true,
         }),
         // スケール
         Animated.sequence([
           Animated.spring(particle.scale, {
-            toValue: 1 + Math.random() * 0.5,
+            toValue: 1.2,
             friction: 4,
             tension: 120,
             useNativeDriver: true,
@@ -102,7 +109,7 @@ export const DefeatEffect: React.FC<DefeatEffectProps> = ({
         ]),
         // 回転
         Animated.timing(particle.rotation, {
-          toValue: (Math.random() - 0.5) * 4,
+          toValue: (i % 2 === 0 ? 2 : -2),
           duration: 700,
           useNativeDriver: true,
         }),
@@ -174,7 +181,7 @@ export const DefeatEffect: React.FC<DefeatEffectProps> = ({
     // 最大時間でも完了を保証
     const timeout = setTimeout(onComplete, enemyType === 'boss' ? 2000 : 800);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [particles, enemyType, onComplete]);
 
   return (
     <View style={styles.container} pointerEvents="none">
