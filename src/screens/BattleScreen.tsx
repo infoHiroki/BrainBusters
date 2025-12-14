@@ -185,6 +185,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // 処理中フラグ（同期的に更新）
   const isProcessingRef = useRef(false);
 
+  // 特殊エフェクトのオフセットカウンター（重なり防止）
+  const specialEffectCountRef = useRef(0);
+
   // バトル初期化
   useEffect(() => {
     const initBattle = () => {
@@ -268,7 +271,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     label?: string
   ) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setFloatingNumbers(prev => [...prev, { id, value, type, x, y, label }]);
+
+    // 特殊エフェクト（buff/debuff/draw/energy）は重ならないようにオフセット
+    const isSpecial = type === 'buff' || type === 'debuff' || type === 'draw' || type === 'energy';
+    let finalY = y;
+    if (isSpecial) {
+      const offset = specialEffectCountRef.current * 40;  // 40pxずつずらす
+      finalY = y + offset;
+      specialEffectCountRef.current++;
+      // 一定時間後にカウンターをリセット
+      setTimeout(() => {
+        specialEffectCountRef.current = Math.max(0, specialEffectCountRef.current - 1);
+      }, 500);
+    }
+
+    setFloatingNumbers(prev => [...prev, { id, value, type, x, y: finalY, label }]);
 
     // 効果音を再生
     if (type === 'damage') {
