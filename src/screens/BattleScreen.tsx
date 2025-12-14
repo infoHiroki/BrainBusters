@@ -28,6 +28,9 @@ import {
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
 import { GAME_CONFIG } from '../types/game';
 import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
+import { ComboResult } from '../types/tags';
+import { TurnCardTracker, createTurnTracker, checkCombosWithStock } from '../utils/comboDetection';
+import { ComboDisplay } from '../components/ComboDisplay';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -39,7 +42,8 @@ const CARD_HEIGHT = 215;
 interface FloatingNumber {
   id: string;
   value: number;
-  type: 'damage' | 'block' | 'heal';
+  type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff';
+  label?: string;  // バフ・デバフ名
   x: number;
   y: number;
 }
@@ -47,28 +51,91 @@ interface FloatingNumber {
 const FloatingDamage: React.FC<{ number: FloatingNumber; onComplete: () => void }> = ({ number, onComplete }) => {
   const opacity = useRef(new Animated.Value(1)).current;
   const translateY = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.5)).current;
+  const scale = useRef(new Animated.Value(0.3)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 2500, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: -80, duration: 2500, useNativeDriver: true }),
+      // フェードアウト（長めに表示）
       Animated.sequence([
-        Animated.timing(scale, { toValue: 1.3, duration: 300, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(1500),
+        Animated.timing(opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
+      ]),
+      // 上に浮かぶ
+      Animated.timing(translateY, { toValue: -60, duration: 2500, useNativeDriver: true }),
+      // ポップアニメーション（大きく飛び出す）
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.5, friction: 3, tension: 200, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1.2, duration: 200, useNativeDriver: true }),
+      ]),
+      // 微妙な揺れ
+      Animated.sequence([
+        Animated.timing(rotate, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.timing(rotate, { toValue: -1, duration: 100, useNativeDriver: true }),
+        Animated.timing(rotate, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]),
     ]).start(onComplete);
   }, []);
 
-  const color = number.type === 'damage' ? '#ff4444' : number.type === 'block' ? '#4a9eff' : '#44ff44';
+  // 色の設定
+  const getColor = () => {
+    switch (number.type) {
+      case 'damage': return '#ff3333';
+      case 'block': return '#33aaff';
+      case 'blocked': return '#33aaff';
+      case 'heal': return '#33ff33';
+      case 'buff': return '#ffaa00';
+      case 'debuff': return '#aa44ff';
+    }
+  };
+  const color = getColor();
+
+  // 表示テキスト
+  const getText = () => {
+    switch (number.type) {
+      case 'damage': return `-${number.value}`;
+      case 'block': return `+${number.value}`;
+      case 'blocked': return `${number.value}`;
+      case 'heal': return `+${number.value}`;
+      case 'buff': return `${number.label}+${number.value}`;
+      case 'debuff': return `${number.label}+${number.value}`;
+    }
+  };
+
+  // バフ・デバフはラベル付きで幅が必要、サイズも小さめ
+  const isBuffDebuff = number.type === 'buff' || number.type === 'debuff';
 
   return (
     <Animated.View style={[
       styles.floatingNumber,
-      { left: number.x, top: number.y, opacity, transform: [{ translateY }, { scale }] }
+      isBuffDebuff ? {
+        left: 0,
+        right: 0,
+        top: number.y + 60,  // ダメージ表示とずらす
+      } : {
+        left: number.x - 40,
+        top: number.y,
+      },
+      {
+        opacity,
+        transform: [
+          { translateY },
+          { scale },
+          { rotate: rotate.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-5deg', '0deg', '5deg'] }) }
+        ]
+      }
     ]}>
-      <Text style={[styles.floatingNumberText, { color }]}>
-        {number.type === 'damage' ? '-' : '+'}{number.value}
+      <Text style={[
+        styles.floatingNumberText,
+        {
+          color,
+          textShadowColor: '#000',
+          textShadowOffset: { width: 2, height: 2 },
+          textShadowRadius: 3,
+          fontSize: isBuffDebuff ? 32 : 48,  // バフ・デバフは小さめ
+        }
+      ]} numberOfLines={1}>
+        {getText()}
       </Text>
     </Animated.View>
   );
@@ -95,13 +162,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [targetEnemyIndex, setTargetEnemyIndex] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [turnPhase, setTurnPhase] = useState<'player' | 'enemy' | 'draw'>('draw');
-  const [messages, setMessages] = useState<Array<{ id: string; text: string; opacity: Animated.Value }>>([]);
+  const [messages, setMessages] = useState<Array<{ id: string; text: string; opacity: Animated.Value; offsetIndex: number; position: 'top' | 'center' | 'bottom' }>>([]);
   const [enemiesKilledThisBattle, setEnemiesKilledThisBattle] = useState<number>(0);
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
   const [isSelectingTarget, setIsSelectingTarget] = useState(false);
   const [usedStockIndices, setUsedStockIndices] = useState<number[]>([]);
   const [currentRunState, setCurrentRunState] = useState<RunState>(runState);
   const [showRelicsPanel, setShowRelicsPanel] = useState(false);
+
+  // コンボシステム
+  const [turnTracker, setTurnTracker] = useState<TurnCardTracker>(createTurnTracker());
+  const [activeCombo, setActiveCombo] = useState<ComboResult | null>(null);
+  const [comboQueue, setComboQueue] = useState<ComboResult[]>([]);
 
   // アニメーション
   const shakeAnims = useRef<Animated.Value[]>([]).current;
@@ -144,45 +216,235 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('player');
   };
 
-  // メッセージを表示（スタック式：複数同時表示可能）
-  const showMessage = (msg: string) => {
+  // メッセージカウンター（縦位置のずらし用・位置別）
+  const messageCountTopRef = useRef(0);
+  const messageCountCenterRef = useRef(0);
+  const messageCountBottomRef = useRef(0);
+
+  // メッセージを表示（フェードのみ・全て真ん中）
+  const showMessage = (msg: string, _position: 'top' | 'center' | 'bottom' = 'center') => {
+    const position = 'center';  // 全て真ん中に統一
     const id = Math.random().toString(36).substr(2, 9);
-    const opacity = new Animated.Value(1);
+    const opacity = new Animated.Value(0);
+    // 連続メッセージは縦位置をずらして重ならないようにする（位置別カウント）
+    const counterRef = position === 'top' ? messageCountTopRef : position === 'center' ? messageCountCenterRef : messageCountBottomRef;
+    const offsetIndex = counterRef.current % 4;
+    counterRef.current++;
 
-    setMessages(prev => [...prev, { id, text: msg, opacity }]);
+    setMessages(prev => [...prev, { id, text: msg, opacity, offsetIndex, position }]);
 
-    // 1.5秒後にフェードアウト開始（スタック表示なのでテンポ良く）
+    // フェードイン → 表示維持 → フェードアウト
     Animated.sequence([
-      Animated.delay(1500),
+      // フェードイン
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      // 表示維持
+      Animated.delay(1200),
+      // フェードアウト
       Animated.timing(opacity, {
         toValue: 0,
         duration: 400,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // フェードアウト完了後にメッセージを削除
+      // アニメーション完了後にメッセージを削除
       setMessages(prev => prev.filter(m => m.id !== id));
     });
   };
 
   // フローティングダメージを追加（効果音付き）
-  const addFloatingNumber = (value: number, type: 'damage' | 'block' | 'heal', x: number, y: number) => {
+  const addFloatingNumber = (
+    value: number,
+    type: 'damage' | 'block' | 'blocked' | 'heal' | 'buff' | 'debuff',
+    x: number,
+    y: number,
+    label?: string
+  ) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setFloatingNumbers(prev => [...prev, { id, value, type, x, y }]);
+    setFloatingNumbers(prev => [...prev, { id, value, type, x, y, label }]);
 
     // 効果音を再生
     if (type === 'damage') {
       playSound('attack');
-    } else if (type === 'block') {
+    } else if (type === 'block' || type === 'blocked') {
       playSound('block');
     } else if (type === 'heal') {
       playSound('heal');
     }
+    // buff/debuffは専用効果音があれば追加可能
   };
 
   // フローティングダメージを削除
   const removeFloatingNumber = (id: string) => {
     setFloatingNumbers(prev => prev.filter(n => n.id !== id));
+  };
+
+  // コンボ効果を適用
+  const applyComboEffects = (combo: ComboResult) => {
+    if (!battleState) return;
+
+    combo.appliedEffects.forEach(ae => {
+      const effect = ae.effect;
+      const value = ae.actualValue;
+
+      switch (effect.type) {
+        case 'damage':
+          // ダメージ効果
+          if (effect.target === 'all') {
+            // 全体ダメージ
+            setBattleState(prev => {
+              if (!prev) return null;
+              const updatedEnemies = prev.enemies.map(enemy => ({
+                ...enemy,
+                hp: Math.max(0, enemy.hp - Math.max(0, value - enemy.block)),
+              }));
+              return { ...prev, enemies: updatedEnemies };
+            });
+            showMessage(`${combo.combo.name}: 全体に${value}ダメージ！`, 'center');
+          } else {
+            // 単体ダメージ（ターゲット敵に）
+            setBattleState(prev => {
+              if (!prev) return null;
+              const aliveEnemies = prev.enemies.filter(e => e.hp > 0);
+              if (aliveEnemies.length === 0) return prev;
+              const targetEnemy = aliveEnemies[0];
+              const updatedEnemies = prev.enemies.map(enemy =>
+                enemy.id === targetEnemy.id
+                  ? { ...enemy, hp: Math.max(0, enemy.hp - Math.max(0, value - enemy.block)) }
+                  : enemy
+              );
+              return { ...prev, enemies: updatedEnemies };
+            });
+            showMessage(`${combo.combo.name}: ${value}ダメージ！`, 'center');
+          }
+          addFloatingNumber(value, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3);
+          break;
+
+        case 'block':
+          setPlayerBlock(prev => prev + value);
+          addFloatingNumber(value, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+          showMessage(`${combo.combo.name}: 防御+${value}！`);  // 下部（デフォルト）
+          break;
+
+        case 'heal':
+          setHp(prev => Math.min(runState.maxHp, prev + value));
+          addFloatingNumber(value, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+          showMessage(`${combo.combo.name}: ${value}回復！`);  // 下部（デフォルト）
+          break;
+
+        case 'draw':
+          // カードドロー
+          const drawResult = drawCards(drawPile, discardPile, hand, value);
+          setHand(drawResult.hand);
+          setDrawPile(drawResult.drawPile);
+          setDiscardPile(drawResult.discardPile);
+          showMessage(`${combo.combo.name}: ${value}枚ドロー！`);  // 下部（デフォルト）
+          break;
+
+        case 'energy':
+          setEnergy(prev => prev + value);
+          showMessage(`${combo.combo.name}: +${value}エネルギー！`);  // 下部（デフォルト）
+          break;
+
+        case 'buff':
+          // バフ付与
+          setBattleState(prev => {
+            if (!prev) return null;
+            const existingStatus = prev.playerStatuses.find(s => s.type === effect.buffType as any);
+            let newStatuses;
+            if (existingStatus) {
+              newStatuses = prev.playerStatuses.map(s =>
+                s.type === effect.buffType ? { ...s, stacks: s.stacks + value } : s
+              );
+            } else {
+              newStatuses = [...prev.playerStatuses, {
+                type: effect.buffType as any,
+                stacks: value,
+                duration: effect.duration,
+              }];
+            }
+            return { ...prev, playerStatuses: newStatuses };
+          });
+          const buffName = effect.buffType === 'strength' ? '闘志' :
+                          effect.buffType === 'dexterity' ? '克己' : effect.buffType;
+          showMessage(`${combo.combo.name}: ${buffName}+${value}！`);
+          addFloatingNumber(value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffName);
+          break;
+
+        case 'debuff':
+          // デバフ付与
+          setBattleState(prev => {
+            if (!prev) return null;
+            const applyDebuff = (enemy: Enemy): Enemy => {
+              const existingStatus = enemy.statuses.find(s => s.type === effect.buffType as any);
+              let newStatuses;
+              if (existingStatus) {
+                newStatuses = enemy.statuses.map(s =>
+                  s.type === effect.buffType ? { ...s, stacks: s.stacks + value } : s
+                );
+              } else {
+                newStatuses = [...enemy.statuses, {
+                  type: effect.buffType as any,
+                  stacks: value,
+                  duration: effect.duration,
+                }];
+              }
+              return { ...enemy, statuses: newStatuses };
+            };
+
+            const updatedEnemies = effect.target === 'all'
+              ? prev.enemies.map(e => e.hp > 0 ? applyDebuff(e) : e)
+              : prev.enemies.map((e, i) => i === 0 && e.hp > 0 ? applyDebuff(e) : e);
+
+            return { ...prev, enemies: updatedEnemies };
+          });
+          const debuffName = effect.buffType === 'vulnerable' ? '不安' :
+                            effect.buffType === 'weak' ? '虚弱' :
+                            effect.buffType === 'poison' ? '苦悩' : effect.buffType;
+          showMessage(`${combo.combo.name}: ${debuffName}付与！`, 'center');  // 敵への効果
+          addFloatingNumber(value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffName);
+          break;
+      }
+    });
+  };
+
+  // コンボ演出完了時の処理
+  const handleComboComplete = () => {
+    // 現在のコンボ効果を適用
+    if (activeCombo) {
+      applyComboEffects(activeCombo);
+    }
+
+    // 次のコンボがあれば表示
+    if (comboQueue.length > 0) {
+      const [nextCombo, ...remaining] = comboQueue;
+      setActiveCombo(nextCombo);
+      setComboQueue(remaining);
+    } else {
+      setActiveCombo(null);
+    }
+  };
+
+  // コンボをチェックして発動
+  const checkAndTriggerCombos = (card: Card, instanceId: string) => {
+    const { tracker: newTracker, newCombos } = checkCombosWithStock(
+      turnTracker,
+      currentRunState.stockCards,
+      card,
+      instanceId
+    );
+
+    setTurnTracker(newTracker);
+
+    if (newCombos.length > 0) {
+      // 最初のコンボを表示、残りはキューに
+      const [firstCombo, ...remainingCombos] = newCombos;
+      setActiveCombo(firstCombo);
+      setComboQueue(remainingCombos);
+    }
   };
 
   // カードを選択
@@ -195,7 +457,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 使用可能かチェック
     if (!canPlayCard(card, energy, battleState.enemies)) {
-      showMessage('エネルギー不足！');
+      showMessage('エネルギー不足！', 'center');
       return;
     }
 
@@ -225,7 +487,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         // 敵が複数 → ターゲット選択モード
         setSelectedCardIndex(index);
         setIsSelectingTarget(true);
-        showMessage('敵を選択してください');
+        showMessage('敵を選択してください', 'center');
       }
     } else {
       // 防御・スキルカード・全体攻撃は即座に使用
@@ -259,7 +521,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 使用可能かチェック
     if (!canPlayCard(stockCard, energy, battleState.enemies)) {
-      showMessage('エネルギー不足！');
+      showMessage('エネルギー不足！', 'center');
       return;
     }
 
@@ -308,10 +570,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
         }
       });
-      showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`);
+      showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`, 'center');
     }
 
-    // 防御力強化を表示
+    // 防御力強化を表示（下部）
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
@@ -347,6 +609,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (result.healAmount > 0) {
       addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
       setHp(prev => Math.min(currentRunState.maxHp, prev + result.healAmount));
+    }
+
+    // バフ・デバフエフェクト
+    for (const effect of card.effects) {
+      if (effect.type === 'buff' && effect.statusType) {
+        const buffLabel = effect.statusType === 'strength' ? '闘志' :
+                         effect.statusType === 'dexterity' ? '克己' :
+                         effect.statusType === 'regeneration' ? '調和' : effect.statusType;
+        addFloatingNumber(effect.value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffLabel);
+        showMessage(`📦 ${card.name}: ${buffLabel}+${effect.value}！`);
+      } else if (effect.type === 'debuff' && effect.statusType) {
+        const debuffLabel = effect.statusType === 'vulnerable' ? '不安' :
+                           effect.statusType === 'weak' ? '躊躇' :
+                           effect.statusType === 'frail' ? '倦怠' :
+                           effect.statusType === 'poison' ? '苦悩' : effect.statusType;
+        addFloatingNumber(effect.value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffLabel);
+        showMessage(`📦 ${card.name}: ${debuffLabel}付与！`, 'center');
+      }
     }
 
     // 倒した敵のカウント
@@ -395,7 +675,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // エネルギー消費
     if (card.cost > energy) {
-      showMessage('エネルギー不足！');
+      showMessage('エネルギー不足！', 'center');
       isProcessingRef.current = false;
       return;
     }
@@ -431,11 +711,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         }
       });
 
-      // 効果を含めたメッセージ
+      // 攻撃メッセージは真ん中
       if (strengthBonus > 0) {
-        showMessage(`${card.name}: ${totalDamage}ダメージ (💪+${strengthBonus})`);
+        showMessage(`${card.name}: ${totalDamage}ダメージ (💪+${strengthBonus})`, 'center');
       } else {
-        showMessage(`${card.name}: ${totalDamage}ダメージ！`);
+        showMessage(`${card.name}: ${totalDamage}ダメージ！`, 'center');
       }
     }
 
@@ -484,6 +764,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setHp(prev => Math.min(runState.maxHp, prev + result.healAmount));
     }
 
+    // バフ・デバフエフェクト
+    for (const effect of card.effects) {
+      if (effect.type === 'buff' && effect.statusType) {
+        const buffLabel = effect.statusType === 'strength' ? '闘志' :
+                         effect.statusType === 'dexterity' ? '克己' :
+                         effect.statusType === 'regeneration' ? '調和' : effect.statusType;
+        addFloatingNumber(effect.value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffLabel);
+        showMessage(`${card.name}: ${buffLabel}+${effect.value}！`);
+      } else if (effect.type === 'debuff' && effect.statusType) {
+        const debuffLabel = effect.statusType === 'vulnerable' ? '不安' :
+                           effect.statusType === 'weak' ? '躊躇' :
+                           effect.statusType === 'frail' ? '倦怠' :
+                           effect.statusType === 'poison' ? '苦悩' : effect.statusType;
+        addFloatingNumber(effect.value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffLabel);
+        showMessage(`${card.name}: ${debuffLabel}付与！`, 'center');
+      }
+    }
+
     // 倒した敵のカウント
     setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
 
@@ -491,6 +789,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const playResult = playCard(hand, discardPile, cardInstance.instanceId);
     setHand(playResult.hand);
     setDiscardPile(playResult.discardPile);
+
+    // コンボチェック（カード使用後）
+    checkAndTriggerCombos(card, cardInstance.instanceId);
 
     // 追加ドロー
     let finalHand = playResult.hand;
@@ -555,7 +856,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setTurnPhase('enemy');
     setSelectedCardIndex(null);
 
-    showMessage('⚔️ 敵のターン！');
+    // ターントラッカーをリセット（次のターン用）
+    setTurnTracker(createTurnTracker());
+
+    showMessage('⚔️ 敵のターン！', 'center');
 
     // 敵を一体ずつ順番に処理
     const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
@@ -595,32 +899,42 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           updatedEnemies[enemyArrayIndex] = actionResult.updatedEnemy;
         }
 
-        // ダメージ表示
+        // ダメージ表示（攻撃力・ブロック・最終ダメージを別々に表示）
         const damageTaken = prevHp - currentHp;
         const blocked = actionResult.blocked;
+        const attackValue = actionResult.attackValue;
 
-        if (damageTaken > 0 || blocked > 0) {
-          if (blocked > 0 && damageTaken > 0) {
-            showMessage(`${enemy.name}: 🛡️${blocked}防御 → ${damageTaken}ダメージ！`);
-            addFloatingNumber(blocked, 'block', SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT * 0.65);
+        if (attackValue > 0) {
+          // 攻撃行動の場合: 真ん中に表示
+          showMessage(`${enemy.name}: ⚔️攻撃 ${attackValue}`, 'center');
+
+          if (blocked > 0) {
+            // ブロックは自分の防御なので下部
+            showMessage(`🛡️ブロック ${blocked}`, 'bottom');
+            addFloatingNumber(blocked, 'blocked', SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT * 0.65);
+          }
+
+          if (damageTaken > 0) {
+            // ダメージは攻撃の結果なので真ん中
+            showMessage(`💥${damageTaken}ダメージ！`, 'center');
             addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2 + 30, SCREEN_HEIGHT * 0.7);
             playSound('damage');
           } else if (blocked > 0) {
-            showMessage(`${enemy.name}: 🛡️${blocked}防御 → 完全防御！`);
-            addFloatingNumber(blocked, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
-          } else if (damageTaken > 0) {
-            showMessage(`${enemy.name}: 💥${damageTaken}ダメージ！`);
-            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
-            playSound('damage');
+            showMessage(`✨完全防御！`, 'bottom');
           }
         } else if (actionResult.actionType === 'defend') {
-          showMessage(`${enemy.name}が防御態勢！`);
+          // 敵の防御は上部
+          showMessage(`${enemy.name}が防御態勢！`, 'top');
         } else if (actionResult.actionType === 'buff') {
-          showMessage(`${enemy.name}が自己強化！`);
+          // 敵のバフは上部
+          showMessage(`${enemy.name}が自己強化！`, 'top');
+          addFloatingNumber(actionResult.buffValue, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.25, '闘志');
         } else if (actionResult.actionType === 'debuff') {
-          showMessage(`${enemy.name}が躊躇をかけてきた！`);
+          // 敵のデバフ（プレイヤーへの）は真ん中
+          showMessage(`${enemy.name}が躊躇をかけてきた！`, 'center');
+          addFloatingNumber(actionResult.debuffValue, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, '虚弱');
         } else {
-          showMessage(`${enemy.name}は様子を見ている...`);
+          showMessage(`${enemy.name}は様子を見ている...`, 'top');
         }
 
         // HP更新（リアルタイム表示）
@@ -657,6 +971,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     hp: number;
     block: number;
     blocked: number;
+    attackValue: number;  // 敵の攻撃力（バフ・デバフ込み）
+    buffValue: number;    // バフ値
+    debuffValue: number;  // デバフ値
     playerStatuses: StatusEffect[];
     updatedEnemy: Enemy | null;
     actionType: string;
@@ -664,6 +981,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     let newHp = currentHp;
     let newBlock = currentBlock;
     let blocked = 0;
+    let attackValue = 0;  // 敵の攻撃力を保存
+    let buffValue = 0;
+    let debuffValue = 0;
     let newPlayerStatuses = [...playerStatuses];
     let updatedEnemy: Enemy | null = null;
     const actionType = enemy.intent.type;
@@ -678,6 +998,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         // プレイヤーの脆弱を適用
         const isVulnerable = playerStatuses.some(s => s.type === 'vulnerable');
         const finalDamage = isVulnerable ? Math.floor(totalDamage * 1.5) : totalDamage;
+
+        // 攻撃力を保存（表示用）
+        attackValue = finalDamage;
 
         // ブロックで軽減
         blocked = Math.min(newBlock, finalDamage);
@@ -694,7 +1017,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         break;
 
       case 'buff':
-        const buffValue = enemy.intent.value || 2;
+        buffValue = enemy.intent.value || 2;
         const existingBuff = enemy.statuses.find(s => s.type === 'strength');
         if (existingBuff) {
           updatedEnemy = {
@@ -712,7 +1035,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         break;
 
       case 'debuff':
-        const debuffValue = enemy.intent.value || 2;
+        debuffValue = enemy.intent.value || 2;
         const existingDebuff = newPlayerStatuses.find(s => s.type === 'weak');
         if (existingDebuff) {
           newPlayerStatuses = newPlayerStatuses.map(s =>
@@ -732,6 +1055,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       hp: newHp,
       block: newBlock,
       blocked,
+      attackValue,
+      buffValue,
+      debuffValue,
       playerStatuses: newPlayerStatuses,
       updatedEnemy,
       actionType,
@@ -757,7 +1083,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       if (poisonStatus && poisonStatus.stacks > 0) {
         // ダメージ適用
         newHp = Math.max(0, enemy.hp - poisonStatus.stacks);
-        showMessage(`${enemy.name}に苦悩で${poisonStatus.stacks}ダメージ！`);
+        showMessage(`${enemy.name}に苦悩で${poisonStatus.stacks}ダメージ！`, 'center');
 
         // スタックを1減らす
         newStatuses = enemy.statuses.map(s => {
@@ -1057,17 +1383,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         </View>
       </View>
 
-      {/* メッセージ（スタック表示） */}
-      <View style={styles.messageContainer}>
-        {messages.map((msg, index) => (
+      {/* メッセージ（全て真ん中・オレンジ枠） */}
+      <View style={styles.messageContainerCenter}>
+        {messages.map((msg) => (
           <Animated.View
             key={msg.id}
             style={[
               styles.messageItem,
-              { opacity: msg.opacity, transform: [{ translateY: index * -36 }] }
+              {
+                opacity: msg.opacity,
+                top: msg.offsetIndex * 32,
+              }
             ]}
           >
-            <Text style={styles.messageText}>{msg.text}</Text>
+            <Text style={styles.messageTextCenter}>{msg.text}</Text>
           </Animated.View>
         ))}
       </View>
@@ -1080,6 +1409,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           onComplete={() => removeFloatingNumber(num.id)}
         />
       ))}
+
+      {/* コンボ演出 */}
+      <ComboDisplay
+        comboResult={activeCombo}
+        onComplete={handleComboComplete}
+      />
 
       {/* アクションバー（ターンエンドボタン） */}
       <View style={styles.actionBar}>
@@ -1423,39 +1758,74 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   // メッセージ（スタック表示）
-  messageContainer: {
+  // 敵メッセージ（上部）
+  messageContainerTop: {
+    position: 'absolute',
+    top: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  // システムメッセージ（真ん中）
+  messageContainerCenter: {
     position: 'absolute',
     top: '42%',
-    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  // プレイヤーメッセージ（下部）
+  messageContainerBottom: {
+    position: 'absolute',
+    bottom: 520,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     zIndex: 100,
   },
   messageItem: {
-    marginBottom: 4,
+    position: 'absolute',
   },
   messageText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 4,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
+    maxWidth: SCREEN_WIDTH - 40,
+  },
+  messageTextCenter: {
+    color: '#FFD700',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    maxWidth: SCREEN_WIDTH - 32,
   },
   // フローティングダメージ
   floatingNumber: {
     position: 'absolute',
     zIndex: 200,
+    alignItems: 'center',
   },
   floatingNumberText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
+    fontSize: 48,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   // ストックカードエリア（固定高さでズレ防止）
   stockArea: {
