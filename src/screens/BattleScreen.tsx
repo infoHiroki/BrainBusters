@@ -31,6 +31,7 @@ import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 import { ComboResult } from '../types/tags';
 import { TurnCardTracker, createTurnTracker, checkCombosWithStock } from '../utils/comboDetection';
 import { ComboDisplay } from '../components/ComboDisplay';
+import { DamageEffect, DefeatEffect } from '../components/effects';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -185,8 +186,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [activeCombo, setActiveCombo] = useState<ComboResult | null>(null);
   const [comboQueue, setComboQueue] = useState<ComboResult[]>([]);
 
+  // バトルエフェクト
+  const [activeDamageEffects, setActiveDamageEffects] = useState<Array<{
+    id: string;
+    damage: number;
+    x: number;
+    y: number;
+  }>>([]);
+  const [activeDefeatEffects, setActiveDefeatEffects] = useState<Array<{
+    id: string;
+    x: number;
+    y: number;
+    enemyType: 'normal' | 'elite' | 'boss';
+  }>>([]);
+
   // アニメーション
   const shakeAnims = useRef<Animated.Value[]>([]).current;
+  const screenShakeAnim = useRef(new Animated.Value(0)).current;
 
   // 処理中フラグ（同期的に更新）
   const isProcessingRef = useRef(false);
@@ -307,6 +323,61 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // フローティングダメージを削除
   const removeFloatingNumber = (id: string) => {
     setFloatingNumbers(prev => prev.filter(n => n.id !== id));
+  };
+
+  // 画面シェイクをトリガー
+  const triggerScreenShake = (intensity: number = 10, duration: number = 300) => {
+    screenShakeAnim.setValue(0);
+    Animated.sequence([
+      ...Array(Math.floor(duration / 60)).fill(null).map(() =>
+        Animated.sequence([
+          Animated.timing(screenShakeAnim, {
+            toValue: intensity,
+            duration: 30,
+            useNativeDriver: true,
+          }),
+          Animated.timing(screenShakeAnim, {
+            toValue: -intensity,
+            duration: 30,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+      Animated.timing(screenShakeAnim, {
+        toValue: 0,
+        duration: 30,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // ダメージエフェクトを追加
+  const addDamageEffect = (damage: number, x: number, y: number) => {
+    if (damage < 50) return; // 50未満はエフェクトなし
+
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveDamageEffects(prev => [...prev, { id, damage, x, y }]);
+
+    // 100以上のダメージは画面シェイク
+    if (damage >= 100) {
+      triggerScreenShake(Math.min(damage / 10, 15), 400);
+    }
+  };
+
+  // ダメージエフェクトを削除
+  const removeDamageEffect = (id: string) => {
+    setActiveDamageEffects(prev => prev.filter(e => e.id !== id));
+  };
+
+  // 敵撃破エフェクトを追加
+  const addDefeatEffect = (x: number, y: number, enemyType: 'normal' | 'elite' | 'boss') => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveDefeatEffects(prev => [...prev, { id, x, y, enemyType }]);
+  };
+
+  // 敵撃破エフェクトを削除
+  const removeDefeatEffect = (id: string) => {
+    setActiveDefeatEffects(prev => prev.filter(e => e.id !== id));
   };
 
   // コンボ効果を適用
@@ -597,6 +668,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           const targetIndex = card.effects.some(e => e.target === 'all_enemies') ? i : enemyIndex;
           const xOffset = SCREEN_WIDTH / 2 + (targetIndex - (battleState.enemies.length - 1) / 2) * 160;
           addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+
+          // ダメージエフェクト（50+で火花、100+で爆発）
+          addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
         }
       });
       showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`, 'center');
@@ -665,8 +739,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       }
     }
 
-    // 倒した敵のカウント
-    setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
+    // 倒した敵のカウント + 撃破エフェクト
+    if (result.enemiesKilled.length > 0) {
+      setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
+
+      // 撃破エフェクトを表示
+      result.enemiesKilled.forEach((killedIndex) => {
+        const killedEnemy = battleState.enemies[killedIndex];
+        if (killedEnemy) {
+          const enemyType = killedEnemy.isBoss ? 'boss' : killedEnemy.isElite ? 'elite' : 'normal';
+          const xOffset = SCREEN_WIDTH / 2 + (killedIndex - (battleState.enemies.length - 1) / 2) * 160;
+          addDefeatEffect(xOffset, SCREEN_HEIGHT * 0.3, enemyType);
+        }
+      });
+    }
 
     // 追加ドロー
     if (result.cardsDrawn > 0) {
@@ -752,6 +838,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           const targetIndex = card.effects.some(e => e.target === 'all_enemies') ? i : enemyIndex;
           const xOffset = SCREEN_WIDTH / 2 + (targetIndex - (battleState.enemies.length - 1) / 2) * 160;
           addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+
+          // ダメージエフェクト（50+で火花、100+で爆発）
+          addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
         }
       });
 
@@ -833,8 +922,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       }
     }
 
-    // 倒した敵のカウント
-    setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
+    // 倒した敵のカウント + 撃破エフェクト
+    if (result.enemiesKilled.length > 0) {
+      setEnemiesKilledThisBattle(prev => prev + result.enemiesKilled.length);
+
+      // 撃破エフェクトを表示
+      result.enemiesKilled.forEach((killedIndex) => {
+        const killedEnemy = battleState.enemies[killedIndex];
+        if (killedEnemy) {
+          const enemyType = killedEnemy.isBoss ? 'boss' : killedEnemy.isElite ? 'elite' : 'normal';
+          const xOffset = SCREEN_WIDTH / 2 + (killedIndex - (battleState.enemies.length - 1) / 2) * 160;
+          addDefeatEffect(xOffset, SCREEN_HEIGHT * 0.3, enemyType);
+        }
+      });
+    }
 
     // カードを手札から捨て札へ
     const playResult = playCard(hand, discardPile, cardInstance.instanceId);
@@ -1312,7 +1413,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const hpPercentage = (hp / runState.maxHp) * 100;
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          transform: [{ translateX: screenShakeAnim }],
+        },
+      ]}
+    >
       <LinearGradient
         colors={['#0a0a1a', '#1a1a3e', '#0a0a1a']}
         style={StyleSheet.absoluteFill}
@@ -1479,6 +1587,28 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         onComplete={handleComboComplete}
       />
 
+      {/* ダメージエフェクト（50+で火花、100+で爆発） */}
+      {activeDamageEffects.map(effect => (
+        <DamageEffect
+          key={effect.id}
+          damage={effect.damage}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeDamageEffect(effect.id)}
+        />
+      ))}
+
+      {/* 敵撃破エフェクト */}
+      {activeDefeatEffects.map(effect => (
+        <DefeatEffect
+          key={effect.id}
+          x={effect.x}
+          y={effect.y}
+          enemyType={effect.enemyType}
+          onComplete={() => removeDefeatEffect(effect.id)}
+        />
+      ))}
+
       {/* アクションバー（ターンエンドボタン） */}
       <View style={styles.actionBar}>
         <TouchableOpacity
@@ -1546,7 +1676,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           ))}
         </ScrollView>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

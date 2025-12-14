@@ -1,7 +1,7 @@
 // 報酬画面
 // 戦闘勝利後のカード選択・報酬獲得
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,14 +9,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RunState, Card, Relic } from '../types/game';
 import { BattleCard } from '../components/BattleCard';
 import { generateRewardCards } from '../data/cards';
-import { getRandomRelicByRarity, getRelicPrice } from '../data/relics';
+import { getRandomRelicByRarity } from '../data/relics';
 import { getRarityColor } from '../data/concepts';
+import { PsychedelicEffect } from '../components/effects';
 
 interface RewardScreenProps {
   runState: RunState;
@@ -47,6 +47,7 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
   const [cardAction, setCardAction] = useState<'deck' | 'stock'>('stock'); // デフォルトはストック
   const [isReplacingStock, setIsReplacingStock] = useState(false); // ストック交換モード
   const [selectedStockIndex, setSelectedStockIndex] = useState<number | null>(null); // 交換対象のストックインデックス
+  const [isProcessing, setIsProcessing] = useState(false); // 処理中フラグ（連打防止）
 
   // ゴールド自動取得
   useEffect(() => {
@@ -61,61 +62,35 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
     }
   }, [isBossReward, relicTaken, onSelectRelic]);
 
-  // ボス撃破時のパーティクルアニメーション
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const particleCount = 30;
-  const particles = useRef(
-    Array.from({ length: particleCount }, () => ({
-      x: new Animated.Value(screenWidth / 2),
-      y: new Animated.Value(screenHeight / 2),
-      opacity: new Animated.Value(1),
-      scale: new Animated.Value(0),
-      color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF69B4'][
-        Math.floor(Math.random() * 6)
-      ],
-      emoji: ['✨', '⭐', '🌟', '💫', '🎉', '🏆'][Math.floor(Math.random() * 6)],
-    }))
-  ).current;
+  // ===== タイトルアニメーション =====
+  const titleScale = useRef(new Animated.Value(0)).current;
+  const titlePulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (isBossReward) {
-      particles.forEach((particle, index) => {
-        const angle = (index / particleCount) * 2 * Math.PI + Math.random() * 0.5;
-        const distance = 150 + Math.random() * 150;
-        const targetX = screenWidth / 2 + Math.cos(angle) * distance;
-        const targetY = screenHeight / 3 + Math.sin(angle) * distance - 100;
+    // タイトル演出（バウンス + パルス）
+    Animated.sequence([
+      Animated.delay(100),
+      Animated.spring(titleScale, {
+        toValue: 1.2,
+        friction: 3,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleScale, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-        Animated.sequence([
-          Animated.delay(index * 30),
-          Animated.parallel([
-            Animated.timing(particle.scale, {
-              toValue: 1,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(particle.x, {
-              toValue: targetX,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(particle.y, {
-              toValue: targetY + 200,
-              duration: 1500,
-              useNativeDriver: true,
-            }),
-            Animated.sequence([
-              Animated.delay(1000),
-              Animated.timing(particle.opacity, {
-                toValue: 0,
-                duration: 500,
-                useNativeDriver: true,
-              }),
-            ]),
-          ]),
-        ]).start();
-      });
-    }
-  }, [isBossReward]);
+    // タイトルパルス（常時）
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(titlePulse, { toValue: 1.1, duration: 500, useNativeDriver: true }),
+        Animated.timing(titlePulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   // カード報酬を生成（初回のみ）
   const cardRewardsRef = useRef<Card[] | null>(null);
@@ -180,16 +155,26 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
 
   // 「次の階へ進む」ボタン押下時にカードを確定
   const handleProceed = async () => {
-    if (selectedCard) {
-      if (isReplacingStock && selectedStockIndex !== null) {
-        // ストック交換
-        await onReplaceStockCard(selectedStockIndex, selectedCard);
-      } else if (!stockIsFull) {
-        // ストックに追加
-        await onSetStockCard(selectedCard);
+    // 連打防止：処理中なら何もしない
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      if (selectedCard) {
+        if (isReplacingStock && selectedStockIndex !== null) {
+          // ストック交換
+          await onReplaceStockCard(selectedStockIndex, selectedCard);
+        } else if (!stockIsFull) {
+          // ストックに追加
+          await onSetStockCard(selectedCard);
+        }
       }
+      onSkip();
+    } catch (error) {
+      console.error('報酬処理エラー:', error);
+      setIsProcessing(false);
     }
-    onSkip();
+    // onSkip後は画面遷移するのでisProcessingをリセットしない
   };
 
   return (
@@ -199,31 +184,24 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
         style={StyleSheet.absoluteFill}
       />
 
-      {/* ボス撃破パーティクル */}
-      {isBossReward && particles.map((particle, index) => (
-        <Animated.Text
-          key={index}
-          style={[
-            styles.particle,
-            {
-              transform: [
-                { translateX: Animated.subtract(particle.x, screenWidth / 2) },
-                { translateY: Animated.subtract(particle.y, screenHeight / 2) },
-                { scale: particle.scale },
-              ],
-              opacity: particle.opacity,
-            },
-          ]}
-        >
-          {particle.emoji}
-        </Animated.Text>
-      ))}
+      {/* SVGサイケデリックエフェクト */}
+      <PsychedelicEffect isBoss={isBossReward} />
 
       {/* タイトル */}
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {isBossReward ? 'ボス撃破！' : '勝利！'}
-        </Text>
+        <Animated.View
+          style={{
+            transform: [
+              { scale: Animated.multiply(titleScale, titlePulse) },
+            ],
+          }}
+        >
+          {isBossReward ? (
+            <Text style={styles.psychedelicBossTitle}>BOSS{'\n'}DEFEATED!</Text>
+          ) : (
+            <Text style={styles.psychedelicTitle}>VICTORY!</Text>
+          )}
+        </Animated.View>
         <Text style={styles.subtitle}>報酬を選択してください</Text>
       </View>
 
@@ -336,9 +314,9 @@ export const RewardScreen: React.FC<RewardScreenProps> = ({
       {/* 進むボタン */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.proceedButton, !canProceed && styles.buttonDisabled]}
+          style={[styles.proceedButton, (!canProceed || isProcessing) && styles.buttonDisabled]}
           onPress={handleProceed}
-          disabled={!canProceed}
+          disabled={!canProceed || isProcessing}
         >
           <LinearGradient
             colors={canProceed ? ['#6C5CE7', '#5849BE'] : ['#444', '#333']}
@@ -376,14 +354,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0a1a',
     alignItems: 'center',
   },
-  particle: {
-    position: 'absolute',
-    fontSize: 24,
-    zIndex: 100,
-    left: '50%',
-    top: '50%',
-  },
   header: {
+    zIndex: 200,
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 16,
@@ -394,6 +366,44 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 32,
     fontWeight: 'bold',
+  },
+  psychedelicTitle: {
+    color: '#00FFFF',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textShadowColor: '#FF00FF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 30,
+    letterSpacing: 6,
+    textAlign: 'center',
+  },
+  psychedelicBossTitle: {
+    color: '#FF00FF',
+    fontSize: 42,
+    fontWeight: 'bold',
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 35,
+    letterSpacing: 8,
+    textAlign: 'center',
+    lineHeight: 52,
+  },
+  victoryTitle: {
+    color: '#4ECDC4',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(78, 205, 196, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  bossTitle: {
+    color: '#FFD700',
+    fontSize: 36,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(255, 215, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 15,
+    letterSpacing: 2,
   },
   subtitle: {
     color: '#888',
