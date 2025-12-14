@@ -40,7 +40,7 @@ interface BattleResult {
 interface TestPreset {
   id: number;
   name: string;
-  category: 'battle' | 'reward';
+  category: 'battle' | 'reward' | 'effects';
   testMode: TestMode;
   nodeType: 'battle' | 'elite' | 'boss';
   floor: number;
@@ -48,6 +48,7 @@ interface TestPreset {
   hp: number;
   stockCount: number;
   description: string;
+  effectType?: EffectType;
 }
 
 // プリセットシナリオ一覧
@@ -68,6 +69,13 @@ const TEST_PRESETS: TestPreset[] = [
   { id: 12, name: 'ボス報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: 'レリック獲得' },
   { id: 13, name: 'ボス+満杯', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 70, stockCount: 5, description: '25階ボス' },
   { id: 14, name: '最終報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 70, stockCount: 0, description: '50階ボス' },
+  // エフェクトテスト
+  { id: 15, name: 'ダメージ', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '150ダメージ', effectType: 'damage' },
+  { id: 16, name: '撃破:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '通常敵撃破', effectType: 'defeat_normal' },
+  { id: 17, name: '撃破:エリート', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'エリート撃破', effectType: 'defeat_elite' },
+  { id: 18, name: '撃破:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス撃破', effectType: 'defeat_boss' },
+  { id: 19, name: '報酬:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'サイケデリック', effectType: 'psychedelic_normal' },
+  { id: 20, name: '報酬:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス用演出', effectType: 'psychedelic_boss' },
 ];
 
 export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
@@ -97,6 +105,9 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   const applyPreset = (preset: TestPreset) => {
     setSelectedPresetId(preset.id);
     setTestMode(preset.testMode);
+    if (preset.effectType) {
+      setSelectedEffectType(preset.effectType);
+    }
     setNodeType(preset.nodeType);
     setFloor(preset.floor);
     setEnemyCount(preset.enemyCount);
@@ -247,6 +258,27 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               {/* 報酬画面テスト */}
               <Text style={styles.presetCategory}>🎁 報酬</Text>
               {TEST_PRESETS.filter(p => p.category === 'reward').map(preset => (
+                <TouchableOpacity
+                  key={preset.id}
+                  style={[
+                    styles.presetItem,
+                    selectedPresetId === preset.id && styles.presetItemSelected,
+                  ]}
+                  onPress={() => applyPreset(preset)}
+                >
+                  <Text style={[
+                    styles.presetName,
+                    selectedPresetId === preset.id && styles.presetNameSelected,
+                  ]}>
+                    {preset.id}. {preset.name}
+                  </Text>
+                  <Text style={styles.presetDesc}>{preset.description}</Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* エフェクトテスト */}
+              <Text style={styles.presetCategory}>✨ エフェクト</Text>
+              {TEST_PRESETS.filter(p => p.category === 'effects').map(preset => (
                 <TouchableOpacity
                   key={preset.id}
                   style={[
