@@ -808,16 +808,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
       if (!isAllTarget) {
         // 単体攻撃の連撃：各ヒットごとに揺れを発生
+        // 注: damageDealtには実際にヒットしたダメージのみが含まれる（敵が死んだ後はスキップされる）
         result.damageDealt.forEach((damage, hitIndex) => {
-          if (damage > 0 && result.enemies[enemyIndex]?.hp > 0 && shakeAnims[enemyIndex]) {
+          if (damage > 0 && shakeAnims[enemyIndex]) {
             const delay = hitIndex * 300;
             setTimeout(() => {
-              Animated.sequence([
-                Animated.timing(shakeAnims[enemyIndex], { toValue: 1, duration: 80, useNativeDriver: true }),
-                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
-                Animated.timing(shakeAnims[enemyIndex], { toValue: -1, duration: 80, useNativeDriver: true }),
-                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
-              ]).start();
+              // アニメーション対象がまだ存在する場合のみ実行
+              if (shakeAnims[enemyIndex]) {
+                Animated.sequence([
+                  Animated.timing(shakeAnims[enemyIndex], { toValue: 1, duration: 80, useNativeDriver: true }),
+                  Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+                  Animated.timing(shakeAnims[enemyIndex], { toValue: -1, duration: 80, useNativeDriver: true }),
+                  Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+                ]).start();
+              }
             }, delay);
           }
         });
