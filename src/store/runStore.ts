@@ -13,7 +13,7 @@ import {
   StatusEffect,
   GAME_CONFIG,
 } from '../types/game';
-import { generateStarterDeck, getCardById, cards, upgradeCard } from '../data/cards';
+import { generateStarterDeck, getCardById, cards, upgradeCard, regenerateCards } from '../data/cards';
 import { generateEnemyGroup, selectNextIntent } from '../data/enemies';
 
 const RUN_STORAGE_KEY = 'BRAIN_BUSTERS_CURRENT_RUN';
@@ -67,6 +67,9 @@ const generateMap = (): MapNode[] => {
 
 // 新しいランを開始
 export const startNewRun = async (): Promise<RunState> => {
+  // カードプールを再生成（毎回異なるカード効果を生成）
+  regenerateCards();
+
   const starterDeck = generateStarterDeck();
 
   const runState: RunState = {

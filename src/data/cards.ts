@@ -115,20 +115,19 @@ const getCategoryType = (category: string, name: string): CardType => {
     return 'skill';
   }
 
-  // quote（発言）は内容に応じて分散
+  // quote（発言）は完全ランダムに分散
   if (category === 'quote') {
-    // ランダムに近い分散だが、一貫性を保つためIDで決定
-    const mod = concepts.findIndex(c => c.name === name) % 3;
-    return mod === 0 ? 'attack' : mod === 1 ? 'defense' : 'skill';
+    const rand = Math.random();
+    return rand < 0.4 ? 'attack' : rand < 0.7 ? 'defense' : 'skill';
   }
 
   return 'skill';
 };
 
-// カードの「個性」を決定するためのハッシュ関数
-const getCardVariant = (id: number): number => {
-  // IDを使って一貫したバリアント（0-19）を生成（5%刻みの精度）
-  return id % 20;
+// カードの「個性」を決定するランダム関数
+const getCardVariant = (_id: number): number => {
+  // 完全ランダムにバリアント（0-19）を生成
+  return Math.floor(Math.random() * 20);
 };
 
 // basePowerからコストを計算（コスト0-6）
@@ -801,8 +800,8 @@ const generateEffects = (basePower: number, type: CardType, rarity: number, name
       patterns = template.skillPatterns;
   }
 
-  // IDとレアリティを組み合わせてパターンを選択（より多様性を出す）
-  const patternIndex = (id + rarity) % patterns.length;
+  // ランダムにパターンを選択（毎回異なるカード効果を生成）
+  const patternIndex = Math.floor(Math.random() * patterns.length);
   const selectedPattern = patterns[patternIndex];
 
   // パターンから効果を生成
@@ -981,8 +980,17 @@ const convertConceptToCard = (concept: Concept): Card => {
   };
 };
 
-// 全カードを変換
-export const cards: Card[] = concepts.map(convertConceptToCard);
+// 全カードを変換（ミュータブルな配列）
+let cards: Card[] = concepts.map(convertConceptToCard);
+
+// カードプールを再生成（新しいランの開始時に呼び出す）
+export const regenerateCards = (): void => {
+  cards = concepts.map(convertConceptToCard);
+  console.log('カードプールを再生成しました');
+};
+
+// カード配列のエクスポート（読み取り専用）
+export { cards };
 
 // ヘルパー関数
 
