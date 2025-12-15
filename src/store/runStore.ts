@@ -105,6 +105,9 @@ export const saveRunState = async (state: RunState): Promise<void> => {
 // ランを読み込み
 export const loadRunState = async (): Promise<RunState | null> => {
   try {
+    // カードプールを再生成（報酬カードの多様性を確保）
+    regenerateCards();
+
     const data = await AsyncStorage.getItem(RUN_STORAGE_KEY);
     if (data) {
       return JSON.parse(data) as RunState;

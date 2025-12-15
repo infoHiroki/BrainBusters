@@ -1091,6 +1091,9 @@ export const generateStarterDeck = (): Card[] => {
 
 // 報酬カード候補を生成（3枚）
 export const generateRewardCards = (floor: number): Card[] => {
+  // 報酬ごとにカードプールを再生成（毎回異なるカードを提供）
+  regenerateCards();
+
   const rewards: Card[] = [];
   const usedIds = new Set<number>();
 
