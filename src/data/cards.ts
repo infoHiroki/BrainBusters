@@ -78,50 +78,45 @@ const isHealingCard = (name: string, category: string): boolean => {
   return healKeywords.some(kw => name.includes(kw));
 };
 
-// カテゴリからカードタイプを決定
+// カテゴリからカードタイプを決定（ランダム性を高める）
 const getCategoryType = (category: string, name: string): CardType => {
   // 回復系は先にチェック（スキルとして扱う）
   if (isHealingCard(name, category)) {
     return 'skill';
   }
 
-  // 攻撃系カテゴリ
-  const attackCategories = ['action', 'emotion'];
+  // 攻撃系キーワード（70%でattack、30%でランダム）
   const attackKeywords = ['怒り', '破壊', '攻撃', '力', '戦', '殺', '死', '滅'];
-
-  // 防御系カテゴリ
-  const defenseCategories = ['philosophy', 'abstract'];
-  const defenseKeywords = ['守', '防', '耐', '壁', '盾', '安', '静', '平和'];
-
-  // スキル系カテゴリ
-  const skillCategories = ['science', 'culture', 'modern', 'mythology', 'psychology', 'society', 'literature', 'person'];
-
-  // 名前でキーワードチェック
   if (attackKeywords.some(kw => name.includes(kw))) {
-    return 'attack';
+    return Math.random() < 0.7 ? 'attack' : (Math.random() < 0.5 ? 'defense' : 'skill');
   }
+
+  // 防御系キーワード（70%でdefense、30%でランダム）
+  const defenseKeywords = ['守', '防', '耐', '壁', '盾', '安', '静', '平和'];
   if (defenseKeywords.some(kw => name.includes(kw))) {
-    return 'defense';
+    return Math.random() < 0.7 ? 'defense' : (Math.random() < 0.5 ? 'attack' : 'skill');
   }
 
-  // カテゴリで判定
-  if (attackCategories.includes(category)) {
-    return 'attack';
-  }
-  if (defenseCategories.includes(category)) {
-    return 'defense';
-  }
-  if (skillCategories.includes(category)) {
-    return 'skill';
+  // 全てのカテゴリでランダム性を導入（傾向は残す）
+  const rand = Math.random();
+
+  // 攻撃系カテゴリ（50% attack, 25% defense, 25% skill）
+  if (['action', 'emotion'].includes(category)) {
+    return rand < 0.5 ? 'attack' : rand < 0.75 ? 'defense' : 'skill';
   }
 
-  // quote（発言）は完全ランダムに分散
-  if (category === 'quote') {
-    const rand = Math.random();
-    return rand < 0.4 ? 'attack' : rand < 0.7 ? 'defense' : 'skill';
+  // 防御系カテゴリ（50% defense, 25% attack, 25% skill）
+  if (['philosophy', 'abstract'].includes(category)) {
+    return rand < 0.5 ? 'defense' : rand < 0.75 ? 'attack' : 'skill';
   }
 
-  return 'skill';
+  // スキル系カテゴリ（40% skill, 30% attack, 30% defense）
+  if (['science', 'culture', 'modern', 'mythology', 'psychology', 'society', 'literature', 'person'].includes(category)) {
+    return rand < 0.4 ? 'skill' : rand < 0.7 ? 'attack' : 'defense';
+  }
+
+  // quote・その他（完全ランダム）
+  return rand < 0.33 ? 'attack' : rand < 0.66 ? 'defense' : 'skill';
 };
 
 // カードの「個性」を決定するランダム関数
