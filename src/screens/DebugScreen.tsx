@@ -56,11 +56,11 @@ const TEST_PRESETS: TestPreset[] = [
   // バトルテスト
   { id: 1, name: '通常1体', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '1階/敵1体' },
   { id: 2, name: '通常3体', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 25, enemyCount: 3, hp: 70, stockCount: 0, description: '25階/敵3体' },
-  { id: 3, name: '高難度', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 45, enemyCount: 3, hp: 10, stockCount: 5, description: '45階/瀕死' },
-  { id: 4, name: 'エリート', category: 'battle', testMode: 'battle', nodeType: 'elite', floor: 20, enemyCount: 2, hp: 35, stockCount: 3, description: '20階/敵2体' },
+  { id: 3, name: '高難度', category: 'battle', testMode: 'battle', nodeType: 'battle', floor: 45, enemyCount: 3, hp: 70, stockCount: 5, description: '45階' },
+  { id: 4, name: 'エリート', category: 'battle', testMode: 'battle', nodeType: 'elite', floor: 20, enemyCount: 2, hp: 70, stockCount: 3, description: '20階/敵2体' },
   { id: 5, name: '序盤ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: '5階ボス' },
-  { id: 6, name: '中盤ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 35, stockCount: 3, description: '25階ボス' },
-  { id: 7, name: '最終ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 10, stockCount: 5, description: '50階/瀕死' },
+  { id: 6, name: '中盤ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 70, stockCount: 3, description: '25階ボス' },
+  { id: 7, name: '最終ボス', category: 'battle', testMode: 'battle', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 70, stockCount: 5, description: '50階ボス' },
   // 報酬画面テスト
   { id: 8, name: 'ストック空', category: 'reward', testMode: 'reward', nodeType: 'battle', floor: 10, enemyCount: 1, hp: 70, stockCount: 0, description: '通常報酬' },
   { id: 9, name: 'ストック半分', category: 'reward', testMode: 'reward', nodeType: 'battle', floor: 10, enemyCount: 1, hp: 70, stockCount: 3, description: 'ストック3' },
