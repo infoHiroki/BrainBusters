@@ -562,13 +562,13 @@ export const PsychedelicEffect: React.FC<PsychedelicEffectProps> = ({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
+    zIndex: 1,
     alignItems: 'center',
     overflow: 'hidden',
   },
   flash: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 150,
+    zIndex: 2,
   },
   cosmicRing: {
     position: 'absolute',
@@ -578,25 +578,25 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     top: CENTER_Y - 30,
     left: CENTER_X - 30,
-    zIndex: 60,
+    zIndex: 3,
   },
   auraContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
-    zIndex: 55,
+    zIndex: 2,
   },
   lotusContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
-    zIndex: 65,
+    zIndex: 4,
   },
   cosmicEye: {
     position: 'absolute',
     top: CENTER_Y - 50,
     left: CENTER_X - 50,
-    zIndex: 80,
+    zIndex: 5,
   },
   explosionRing: {
     position: 'absolute',
@@ -606,13 +606,13 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     top: CENTER_Y - 25,
     left: CENTER_X - 25,
-    zIndex: 90,
+    zIndex: 6,
   },
   confetti: {
     position: 'absolute',
     top: 0,
     borderRadius: 2,
-    zIndex: 200,
+    zIndex: 10,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 4,

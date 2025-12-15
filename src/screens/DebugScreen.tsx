@@ -17,14 +17,23 @@ import { RewardScreen } from './RewardScreen';
 import { startNewRun, saveRunState } from '../store/runStore';
 import { getEliteEnemies, getNormalEnemies, getBossForFloor } from '../data/enemies';
 import { getRandomCard } from '../data/cards';
-import { PsychedelicEffect, DamageEffectSvg, DefeatEffectSvg } from '../components/effects';
+import {
+  PsychedelicEffect,
+  DamageEffectSvg,
+  DefeatEffectSvg,
+  BlockEffectSvg,
+  HealEffectSvg,
+  BuffEffectSvg,
+  DebuffEffectSvg,
+  CardPlayEffectSvg,
+} from '../components/effects';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 220;
 
 type DebugPhase = 'menu' | 'battle' | 'reward' | 'result' | 'effects';
 type TestMode = 'battle' | 'reward' | 'effects';
-type EffectType = 'psychedelic_normal' | 'psychedelic_boss' | 'damage_10' | 'damage_25' | 'damage_50' | 'damage_80' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss';
+type EffectType = 'psychedelic_normal' | 'psychedelic_boss' | 'damage_10' | 'damage_25' | 'damage_50' | 'damage_80' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss' | 'block_5' | 'block_20' | 'heal_5' | 'heal_15' | 'buff' | 'debuff' | 'card_attack' | 'card_defense' | 'card_skill';
 
 interface DebugScreenProps {
   onExit: () => void;
@@ -81,6 +90,19 @@ const TEST_PRESETS: TestPreset[] = [
   // エフェクトテスト（報酬演出）
   { id: 22, name: '報酬:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'サイケデリック', effectType: 'psychedelic_normal' },
   { id: 23, name: '報酬:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス用演出', effectType: 'psychedelic_boss' },
+  // エフェクトテスト（ブロック）
+  { id: 24, name: 'ブロック5', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '小ブロック', effectType: 'block_5' },
+  { id: 25, name: 'ブロック20', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '大ブロック', effectType: 'block_20' },
+  // エフェクトテスト（回復）
+  { id: 26, name: '回復5', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '小回復', effectType: 'heal_5' },
+  { id: 27, name: '回復15', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '大回復', effectType: 'heal_15' },
+  // エフェクトテスト（バフ/デバフ）
+  { id: 28, name: 'バフ', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '強化効果', effectType: 'buff' },
+  { id: 29, name: 'デバフ', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '弱体効果', effectType: 'debuff' },
+  // エフェクトテスト（カード使用）
+  { id: 30, name: 'カード:攻撃', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '攻撃カード', effectType: 'card_attack' },
+  { id: 31, name: 'カード:防御', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '防御カード', effectType: 'card_defense' },
+  { id: 32, name: 'カード:スキル', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'スキルカード', effectType: 'card_skill' },
 ];
 
 export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
@@ -438,6 +460,76 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                     </TouchableOpacity>
                   </View>
 
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>ブロック</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipBlock, selectedEffectType === 'block_5' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('block_5'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>5</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipBlock, selectedEffectType === 'block_20' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('block_20'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>20</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>回復</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipHeal, selectedEffectType === 'heal_5' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('heal_5'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>5</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipHeal, selectedEffectType === 'heal_15' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('heal_15'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>15</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>バフ/デバフ</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipBuff, selectedEffectType === 'buff' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('buff'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>バフ</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipDebuff, selectedEffectType === 'debuff' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('debuff'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>デバフ</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>カード使用</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipCardAttack, selectedEffectType === 'card_attack' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('card_attack'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>攻撃</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipCardDefense, selectedEffectType === 'card_defense' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('card_defense'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>防御</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, styles.effectChipCardSkill, selectedEffectType === 'card_skill' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('card_skill'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>スキル</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>報酬演出</Text>
                   <View style={styles.effectGrid}>
                     <TouchableOpacity
@@ -538,6 +630,37 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                 )}
                 {selectedEffectType === 'defeat_boss' && (
                   <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="boss" onComplete={() => {}} />
+                )}
+                {/* ブロックエフェクト */}
+                {selectedEffectType === 'block_5' && (
+                  <BlockEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} block={5} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'block_20' && (
+                  <BlockEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} block={20} onComplete={() => {}} />
+                )}
+                {/* 回復エフェクト */}
+                {selectedEffectType === 'heal_5' && (
+                  <HealEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} heal={5} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'heal_15' && (
+                  <HealEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} heal={15} onComplete={() => {}} />
+                )}
+                {/* バフ/デバフエフェクト */}
+                {selectedEffectType === 'buff' && (
+                  <BuffEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'debuff' && (
+                  <DebuffEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} onComplete={() => {}} />
+                )}
+                {/* カード使用エフェクト */}
+                {selectedEffectType === 'card_attack' && (
+                  <CardPlayEffectSvg key={effectKey} cardType="attack" x={effectCenterX} y={effectCenterY} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'card_defense' && (
+                  <CardPlayEffectSvg key={effectKey} cardType="defense" x={effectCenterX} y={effectCenterY} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'card_skill' && (
+                  <CardPlayEffectSvg key={effectKey} cardType="skill" x={effectCenterX} y={effectCenterY} onComplete={() => {}} />
                 )}
                 {/* 報酬演出 */}
                 {selectedEffectType === 'psychedelic_normal' && (
@@ -953,6 +1076,27 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 4,
+  },
+  effectChipBlock: {
+    backgroundColor: 'rgba(52, 152, 219, 0.3)',
+  },
+  effectChipHeal: {
+    backgroundColor: 'rgba(46, 204, 113, 0.3)',
+  },
+  effectChipBuff: {
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  effectChipDebuff: {
+    backgroundColor: 'rgba(155, 89, 182, 0.3)',
+  },
+  effectChipCardAttack: {
+    backgroundColor: 'rgba(231, 76, 60, 0.3)',
+  },
+  effectChipCardDefense: {
+    backgroundColor: 'rgba(52, 152, 219, 0.3)',
+  },
+  effectChipCardSkill: {
+    backgroundColor: 'rgba(46, 204, 113, 0.3)',
   },
   effectChipActive: {
     backgroundColor: '#5a3a8a',

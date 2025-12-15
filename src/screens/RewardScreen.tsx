@@ -413,6 +413,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
+    zIndex: 100,
   },
   contentContainer: {
     paddingBottom: 20,
@@ -700,6 +701,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     width: '100%',
     maxWidth: 500,
+    zIndex: 100,
   },
   proceedButton: {
     borderRadius: 12,

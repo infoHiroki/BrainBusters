@@ -69,7 +69,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const config = {
     normal: { colors: NORMAL_COLORS, ringCount: 5, particleCount: 12, fragmentCount: 8, showText: false },
     elite: { colors: ELITE_COLORS, ringCount: 8, particleCount: 20, fragmentCount: 14, showText: false },
-    boss: { colors: BOSS_COLORS, ringCount: 14, particleCount: 36, fragmentCount: 24, showText: true },
+    boss: { colors: BOSS_COLORS, ringCount: 24, particleCount: 60, fragmentCount: 40, showText: false },
   };
 
   const { colors, ringCount, particleCount, fragmentCount, showText } = config[enemyType];
@@ -135,7 +135,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   const symbolRotation = useRef(new Animated.Value(0)).current;
 
   // 蓮の花（ボス用）- 複数レイヤー
-  const lotusLayerCount = enemyType === 'boss' ? 3 : 0;
+  const lotusLayerCount = enemyType === 'boss' ? 6 : 0;
   const lotusAnims = useRef(
     Array.from({ length: lotusLayerCount }, () => ({
       scale: new Animated.Value(0),
@@ -145,7 +145,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
   ).current;
 
   // 内側の波紋（エリート・ボス用）
-  const innerRippleCount = enemyType === 'boss' ? 6 : enemyType === 'elite' ? 4 : 0;
+  const innerRippleCount = enemyType === 'boss' ? 12 : enemyType === 'elite' ? 4 : 0;
   const innerRippleAnims = useRef(
     Array.from({ length: innerRippleCount }, () => ({
       scale: new Animated.Value(0),
@@ -209,33 +209,33 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
 
     // 3. 崩壊リング
     ringAnims.forEach((anim, index) => {
-      const delay = index * 40;
+      const delay = enemyType === 'boss' ? index * 60 : index * 40;
       const direction = index % 2 === 0 ? 1 : -1;
       animations.push(
         Animated.sequence([
           Animated.delay(delay),
           Animated.parallel([
             Animated.timing(anim.scale, {
-              toValue: 2 + index * 0.35,
-              duration: enemyType === 'boss' ? 900 : 750,
+              toValue: 2 + index * (enemyType === 'boss' ? 0.4 : 0.35),
+              duration: enemyType === 'boss' ? 1400 : 750,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.timing(anim.rotation, {
               toValue: direction * 0.3,
-              duration: 1000,
+              duration: enemyType === 'boss' ? 1800 : 1000,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.timing(anim.opacity, {
-                toValue: 0.5 - index * 0.03,
+                toValue: enemyType === 'boss' ? 0.6 - index * 0.02 : 0.5 - index * 0.03,
                 duration: 120,
                 useNativeDriver: true
               }),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: enemyType === 'boss' ? 780 : 630,
+                duration: enemyType === 'boss' ? 1300 : 630,
                 easing: Easing.in(Easing.quad),
                 useNativeDriver: true
               }),
@@ -369,7 +369,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
     // 7. ボス用：蓮の花（複数レイヤー）
     if (enemyType === 'boss') {
       lotusAnims.forEach((anim, index) => {
-        const delay = 80 + index * 100;
+        const delay = 100 + index * 150;
         const direction = index % 2 === 0 ? 1 : -1;
         animations.push(
           Animated.sequence([
@@ -377,34 +377,34 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
             Animated.parallel([
               Animated.sequence([
                 Animated.spring(anim.scale, {
-                  toValue: 1 + index * 0.3,
+                  toValue: 1 + index * 0.4,
                   friction: 4,
-                  tension: 50,
+                  tension: 40,
                   useNativeDriver: true
                 }),
                 Animated.timing(anim.scale, {
-                  toValue: 2 + index * 0.5,
-                  duration: 700,
+                  toValue: 2.5 + index * 0.6,
+                  duration: 1200,
                   easing: Easing.out(Easing.quad),
                   useNativeDriver: true
                 }),
               ]),
               Animated.sequence([
                 Animated.timing(anim.opacity, {
-                  toValue: 0.6 - index * 0.15,
-                  duration: 180,
+                  toValue: 0.5 - index * 0.06,
+                  duration: 200,
                   useNativeDriver: true
                 }),
-                Animated.delay(400),
+                Animated.delay(800),
                 Animated.timing(anim.opacity, {
                   toValue: 0,
-                  duration: 350,
+                  duration: 600,
                   useNativeDriver: true
                 }),
               ]),
               Animated.timing(anim.rotation, {
-                toValue: direction * (0.3 + index * 0.1),
-                duration: 1200,
+                toValue: direction * (0.4 + index * 0.12),
+                duration: 2000,
                 easing: Easing.out(Easing.quad),
                 useNativeDriver: true
               }),
@@ -441,14 +441,22 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
     }
 
     // 全アニメーション実行
+    let completed = false;
+    const safeComplete = () => {
+      if (!completed) {
+        completed = true;
+        onComplete();
+      }
+    };
+
     Animated.parallel(animations).start(() => {
-      setTimeout(onComplete, 100);
+      setTimeout(safeComplete, 100);
     });
 
     // タイムアウト保証（エフェクトが見えるよう延長）
-    const timeout = setTimeout(onComplete, enemyType === 'boss' ? 2500 : 1400);
+    const timeout = setTimeout(safeComplete, enemyType === 'boss' ? 4000 : 1400);
     return () => clearTimeout(timeout);
-  }, [enemyType, onComplete]);
+  }, [enemyType]);
 
   // 正多角形パス生成
   const createPolygon = (cx: number, cy: number, radius: number, sides: number): string => {

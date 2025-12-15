@@ -31,7 +31,15 @@ import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 import { ComboResult } from '../types/tags';
 import { TurnCardTracker, createTurnTracker, checkCombosWithStock } from '../utils/comboDetection';
 import { ComboDisplay } from '../components/ComboDisplay';
-import { DamageEffectSvg, DefeatEffectSvg } from '../components/effects';
+import {
+  DamageEffectSvg,
+  DefeatEffectSvg,
+  BlockEffectSvg,
+  HealEffectSvg,
+  BuffEffectSvg,
+  DebuffEffectSvg,
+  CardPlayEffectSvg,
+} from '../components/effects';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -198,6 +206,36 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     x: number;
     y: number;
     enemyType: 'normal' | 'elite' | 'boss';
+  }>>([]);
+
+  // 新規エフェクト状態
+  const [activeBlockEffects, setActiveBlockEffects] = useState<Array<{
+    id: string;
+    block: number;
+    x: number;
+    y: number;
+  }>>([]);
+  const [activeHealEffects, setActiveHealEffects] = useState<Array<{
+    id: string;
+    heal: number;
+    x: number;
+    y: number;
+  }>>([]);
+  const [activeBuffEffects, setActiveBuffEffects] = useState<Array<{
+    id: string;
+    x: number;
+    y: number;
+  }>>([]);
+  const [activeDebuffEffects, setActiveDebuffEffects] = useState<Array<{
+    id: string;
+    x: number;
+    y: number;
+  }>>([]);
+  const [activeCardPlayEffects, setActiveCardPlayEffects] = useState<Array<{
+    id: string;
+    cardType: 'attack' | 'defense' | 'skill';
+    x: number;
+    y: number;
   }>>([]);
 
   // アニメーション
@@ -380,6 +418,63 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setActiveDefeatEffects(prev => prev.filter(e => e.id !== id));
   };
 
+  // ブロックエフェクトを追加
+  const addBlockEffect = (block: number, x: number, y: number) => {
+    if (block < 5) return; // 5未満はエフェクトなし
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveBlockEffects(prev => [...prev, { id, block, x, y }]);
+  };
+
+  // ブロックエフェクトを削除
+  const removeBlockEffect = (id: string) => {
+    setActiveBlockEffects(prev => prev.filter(e => e.id !== id));
+  };
+
+  // 回復エフェクトを追加
+  const addHealEffect = (heal: number, x: number, y: number) => {
+    if (heal < 3) return; // 3未満はエフェクトなし
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveHealEffects(prev => [...prev, { id, heal, x, y }]);
+  };
+
+  // 回復エフェクトを削除
+  const removeHealEffect = (id: string) => {
+    setActiveHealEffects(prev => prev.filter(e => e.id !== id));
+  };
+
+  // バフエフェクトを追加
+  const addBuffEffect = (x: number, y: number) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveBuffEffects(prev => [...prev, { id, x, y }]);
+  };
+
+  // バフエフェクトを削除
+  const removeBuffEffect = (id: string) => {
+    setActiveBuffEffects(prev => prev.filter(e => e.id !== id));
+  };
+
+  // デバフエフェクトを追加
+  const addDebuffEffect = (x: number, y: number) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveDebuffEffects(prev => [...prev, { id, x, y }]);
+  };
+
+  // デバフエフェクトを削除
+  const removeDebuffEffect = (id: string) => {
+    setActiveDebuffEffects(prev => prev.filter(e => e.id !== id));
+  };
+
+  // カード使用エフェクトを追加
+  const addCardPlayEffect = (cardType: 'attack' | 'defense' | 'skill', x: number, y: number) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setActiveCardPlayEffects(prev => [...prev, { id, cardType, x, y }]);
+  };
+
+  // カード使用エフェクトを削除
+  const removeCardPlayEffect = (id: string) => {
+    setActiveCardPlayEffects(prev => prev.filter(e => e.id !== id));
+  };
+
   // コンボ効果を適用
   const applyComboEffects = (combo: ComboResult) => {
     if (!battleState) return;
@@ -470,6 +565,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                           effect.buffType === 'dexterity' ? '克己' : effect.buffType;
           showMessage(`${combo.combo.name}: ${buffName}+${value}！`);
           addFloatingNumber(value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffName);
+          addBuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
           break;
 
         case 'debuff':
@@ -504,6 +600,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                             effect.buffType === 'poison' ? '苦悩' : effect.buffType;
           showMessage(`${combo.combo.name}: ${debuffName}付与！`, 'center');  // 敵への効果
           addFloatingNumber(value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffName);
+          addDebuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3);
           break;
       }
     });
@@ -680,6 +777,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      addBlockEffect(blockGained, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
       showMessage(`📦 ${card.name}: 防御力+${blockGained}！`);
     }
 
@@ -711,6 +809,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // HP回復
     if (result.healAmount > 0) {
       addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      addHealEffect(result.healAmount, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
       setHp(prev => Math.min(currentRunState.maxHp, prev + result.healAmount));
     }
 
@@ -728,6 +827,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                          effect.statusType === 'dexterity' ? '克己' :
                          effect.statusType === 'regeneration' ? '調和' : effect.statusType;
         addFloatingNumber(effect.value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffLabel);
+        addBuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
         showMessage(`📦 ${card.name}: ${buffLabel}+${effect.value}！`);
       } else if (effect.type === 'debuff' && effect.statusType) {
         const debuffLabel = effect.statusType === 'vulnerable' ? '不安' :
@@ -735,6 +835,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                            effect.statusType === 'frail' ? '倦怠' :
                            effect.statusType === 'poison' ? '苦悩' : effect.statusType;
         addFloatingNumber(effect.value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffLabel);
+        addDebuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3);
         showMessage(`📦 ${card.name}: ${debuffLabel}付与！`, 'center');
       }
     }
@@ -859,6 +960,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const blockGained = result.playerBlock - playerBlock;
     if (blockGained > 0) {
       addFloatingNumber(blockGained, 'block', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      addBlockEffect(blockGained, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
       // 効果を含めたメッセージ
       if (dexterityBonus > 0) {
         showMessage(`防御力+${blockGained} (🏃+${dexterityBonus})`);
@@ -897,6 +999,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // HP回復
     if (result.healAmount > 0) {
       addFloatingNumber(result.healAmount, 'heal', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.75);
+      addHealEffect(result.healAmount, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
       setHp(prev => Math.min(runState.maxHp, prev + result.healAmount));
     }
 
@@ -914,6 +1017,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                          effect.statusType === 'dexterity' ? '克己' :
                          effect.statusType === 'regeneration' ? '調和' : effect.statusType;
         addFloatingNumber(effect.value, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, buffLabel);
+        addBuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
         showMessage(`${card.name}: ${buffLabel}+${effect.value}！`);
       } else if (effect.type === 'debuff' && effect.statusType) {
         const debuffLabel = effect.statusType === 'vulnerable' ? '不安' :
@@ -921,6 +1025,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                            effect.statusType === 'frail' ? '倦怠' :
                            effect.statusType === 'poison' ? '苦悩' : effect.statusType;
         addFloatingNumber(effect.value, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3, debuffLabel);
+        addDebuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.3);
         showMessage(`${card.name}: ${debuffLabel}付与！`, 'center');
       }
     }
@@ -1612,6 +1717,59 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           y={effect.y}
           enemyType={effect.enemyType}
           onComplete={() => removeDefeatEffect(effect.id)}
+        />
+      ))}
+
+      {/* ブロックエフェクト */}
+      {activeBlockEffects.map(effect => (
+        <BlockEffectSvg
+          key={effect.id}
+          block={effect.block}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeBlockEffect(effect.id)}
+        />
+      ))}
+
+      {/* 回復エフェクト */}
+      {activeHealEffects.map(effect => (
+        <HealEffectSvg
+          key={effect.id}
+          heal={effect.heal}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeHealEffect(effect.id)}
+        />
+      ))}
+
+      {/* バフエフェクト */}
+      {activeBuffEffects.map(effect => (
+        <BuffEffectSvg
+          key={effect.id}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeBuffEffect(effect.id)}
+        />
+      ))}
+
+      {/* デバフエフェクト */}
+      {activeDebuffEffects.map(effect => (
+        <DebuffEffectSvg
+          key={effect.id}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeDebuffEffect(effect.id)}
+        />
+      ))}
+
+      {/* カード使用エフェクト */}
+      {activeCardPlayEffects.map(effect => (
+        <CardPlayEffectSvg
+          key={effect.id}
+          cardType={effect.cardType}
+          x={effect.x}
+          y={effect.y}
+          onComplete={() => removeCardPlayEffect(effect.id)}
         />
       ))}
 
