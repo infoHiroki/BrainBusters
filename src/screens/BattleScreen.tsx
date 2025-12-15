@@ -31,7 +31,7 @@ import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 import { ComboResult } from '../types/tags';
 import { TurnCardTracker, createTurnTracker, checkCombosWithStock } from '../utils/comboDetection';
 import { ComboDisplay } from '../components/ComboDisplay';
-import { DamageEffect, DefeatEffect } from '../components/effects';
+import { DamageEffectSvg, DefeatEffectSvg } from '../components/effects';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -1593,9 +1593,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         onComplete={handleComboComplete}
       />
 
-      {/* ダメージエフェクト（50+で火花、100+で爆発） */}
+      {/* ダメージエフェクト（SVG版） */}
       {activeDamageEffects.map(effect => (
-        <DamageEffect
+        <DamageEffectSvg
           key={effect.id}
           damage={effect.damage}
           x={effect.x}
@@ -1604,9 +1604,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         />
       ))}
 
-      {/* 敵撃破エフェクト */}
+      {/* 敵撃破エフェクト（SVG版） */}
       {activeDefeatEffects.map(effect => (
-        <DefeatEffect
+        <DefeatEffectSvg
           key={effect.id}
           x={effect.x}
           y={effect.y}

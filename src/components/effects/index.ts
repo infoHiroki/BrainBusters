@@ -1,9 +1,7 @@
 // エフェクトコンポーネント エクスポート
 
-export { DamageEffect } from './DamageEffect';
-export { DefeatEffect } from './DefeatEffect';
 export { PsychedelicEffect } from './PsychedelicEffect';
 
-// SVG版エフェクト
+// SVG版エフェクト（本採用）
 export { DamageEffectSvg } from './DamageEffectSvg';
 export { DefeatEffectSvg } from './DefeatEffectSvg';

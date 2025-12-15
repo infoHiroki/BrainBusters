@@ -17,14 +17,14 @@ import { RewardScreen } from './RewardScreen';
 import { startNewRun, saveRunState } from '../store/runStore';
 import { getEliteEnemies, getNormalEnemies, getBossForFloor } from '../data/enemies';
 import { getRandomCard } from '../data/cards';
-import { DamageEffect, DefeatEffect, PsychedelicEffect, DamageEffectSvg, DefeatEffectSvg } from '../components/effects';
+import { PsychedelicEffect, DamageEffectSvg, DefeatEffectSvg } from '../components/effects';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 220;
 
 type DebugPhase = 'menu' | 'battle' | 'reward' | 'result' | 'effects';
 type TestMode = 'battle' | 'reward' | 'effects';
-type EffectType = 'damage' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss' | 'psychedelic_normal' | 'psychedelic_boss' | 'damage_svg' | 'damage_svg_100' | 'damage_svg_200' | 'damage_svg_300' | 'defeat_normal_svg' | 'defeat_elite_svg' | 'defeat_boss_svg';
+type EffectType = 'psychedelic_normal' | 'psychedelic_boss' | 'damage_50' | 'damage_100' | 'damage_200' | 'damage_300' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss';
 
 interface DebugScreenProps {
   onExit: () => void;
@@ -69,21 +69,18 @@ const TEST_PRESETS: TestPreset[] = [
   { id: 12, name: 'ボス報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: 'レリック獲得' },
   { id: 13, name: 'ボス+満杯', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 70, stockCount: 5, description: '25階ボス' },
   { id: 14, name: '最終報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 70, stockCount: 0, description: '50階ボス' },
-  // エフェクトテスト
-  { id: 15, name: 'ダメージ', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '150ダメージ', effectType: 'damage' },
-  { id: 16, name: '撃破:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '通常敵撃破', effectType: 'defeat_normal' },
-  { id: 17, name: '撃破:エリート', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'エリート撃破', effectType: 'defeat_elite' },
-  { id: 18, name: '撃破:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス撃破', effectType: 'defeat_boss' },
-  { id: 19, name: '報酬:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'サイケデリック', effectType: 'psychedelic_normal' },
-  { id: 20, name: '報酬:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス用演出', effectType: 'psychedelic_boss' },
-  // SVG版エフェクト
-  { id: 21, name: 'SVG:DMG 50', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '50ダメージ', effectType: 'damage_svg' },
-  { id: 22, name: 'SVG:DMG 100', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '100ダメージ', effectType: 'damage_svg_100' },
-  { id: 23, name: 'SVG:DMG 200', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '200ダメージ', effectType: 'damage_svg_200' },
-  { id: 24, name: 'SVG:DMG 300', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '300ダメージ', effectType: 'damage_svg_300' },
-  { id: 25, name: 'SVG:撃破通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'SVG版', effectType: 'defeat_normal_svg' },
-  { id: 26, name: 'SVG:撃破E', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'SVG版', effectType: 'defeat_elite_svg' },
-  { id: 27, name: 'SVG:撃破B', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'SVG版', effectType: 'defeat_boss_svg' },
+  // エフェクトテスト（ダメージ）
+  { id: 15, name: 'DMG 50', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '小ダメージ', effectType: 'damage_50' },
+  { id: 16, name: 'DMG 100', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '中ダメージ', effectType: 'damage_100' },
+  { id: 17, name: 'DMG 200', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '大ダメージ', effectType: 'damage_200' },
+  { id: 18, name: 'DMG 300', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '極大ダメージ', effectType: 'damage_300' },
+  // エフェクトテスト（撃破）
+  { id: 19, name: '撃破:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '通常敵撃破', effectType: 'defeat_normal' },
+  { id: 20, name: '撃破:エリート', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'エリート撃破', effectType: 'defeat_elite' },
+  { id: 21, name: '撃破:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス撃破', effectType: 'defeat_boss' },
+  // エフェクトテスト（報酬演出）
+  { id: 22, name: '報酬:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'サイケデリック', effectType: 'psychedelic_normal' },
+  { id: 23, name: '報酬:ボス', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'ボス用演出', effectType: 'psychedelic_boss' },
 ];
 
 export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
@@ -96,7 +93,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   const [testMode, setTestMode] = useState<TestMode>('battle');
 
   // エフェクトテスト用
-  const [selectedEffectType, setSelectedEffectType] = useState<EffectType>('damage');
+  const [selectedEffectType, setSelectedEffectType] = useState<EffectType>('damage_50');
   const [showingEffect, setShowingEffect] = useState<boolean>(false);
   const [effectKey, setEffectKey] = useState<number>(0);
 
@@ -391,93 +388,69 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               {/* エフェクト用設定 */}
               {testMode === 'effects' && (
                 <View style={styles.sidebarSection}>
-                  <Text style={styles.sidebarLabel}>旧版（絵文字）</Text>
+                  <Text style={styles.sidebarLabel}>ダメージ</Text>
                   <View style={styles.effectGrid}>
                     <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'damage' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>💥 DMG</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'defeat_normal' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>💨 撃破</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'defeat_elite' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_elite'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>💫 E撃破</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'defeat_boss' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>🌟 B撃破</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'psychedelic_normal' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('psychedelic_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>🌀 報酬</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'psychedelic_boss' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('psychedelic_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>🔮 B報酬</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>SVG版ダメージ</Text>
-                  <View style={styles.effectGrid}>
-                    <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'damage_svg' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_svg'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'damage_50' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_50'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
                       <Text style={styles.effectChipText}>50</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'damage_svg_100' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_svg_100'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'damage_100' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_100'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
                       <Text style={styles.effectChipText}>100</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'damage_svg_200' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_svg_200'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'damage_200' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_200'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
                       <Text style={styles.effectChipText}>200</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'damage_svg_300' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_svg_300'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'damage_300' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_300'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
                       <Text style={styles.effectChipText}>300</Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>SVG版撃破</Text>
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>撃破</Text>
                   <View style={styles.effectGrid}>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'defeat_normal_svg' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_normal_svg'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'defeat_normal' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
-                      <Text style={styles.effectChipText}>◇ 撃破</Text>
+                      <Text style={styles.effectChipText}>通常</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'defeat_elite_svg' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_elite_svg'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'defeat_elite' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_elite'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
-                      <Text style={styles.effectChipText}>◆ E撃破</Text>
+                      <Text style={styles.effectChipText}>エリート</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.effectChip, styles.svgChip, selectedEffectType === 'defeat_boss_svg' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('defeat_boss_svg'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                      style={[styles.effectChip, selectedEffectType === 'defeat_boss' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('defeat_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
-                      <Text style={styles.effectChipText}>✦ B撃破</Text>
+                      <Text style={styles.effectChipText}>ボス</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.sidebarLabel, { marginTop: 8 }]}>報酬演出</Text>
+                  <View style={styles.effectGrid}>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'psychedelic_normal' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('psychedelic_normal'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>通常</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'psychedelic_boss' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('psychedelic_boss'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>ボス</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -543,45 +516,35 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
             {/* エフェクトモード: フル画面プレビュー */}
             {testMode === 'effects' && showingEffect && (
               <>
-                {selectedEffectType === 'damage' && (
-                  <DamageEffect key={effectKey} x={effectCenterX} y={effectCenterY} damage={150} onComplete={() => {}} />
+                {/* ダメージエフェクト */}
+                {selectedEffectType === 'damage_50' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={50} onComplete={() => {}} />
                 )}
+                {selectedEffectType === 'damage_100' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={100} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'damage_200' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={200} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'damage_300' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={300} onComplete={() => {}} />
+                )}
+                {/* 撃破エフェクト */}
                 {selectedEffectType === 'defeat_normal' && (
-                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="normal" onComplete={() => {}} />
+                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="normal" onComplete={() => {}} />
                 )}
                 {selectedEffectType === 'defeat_elite' && (
-                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="elite" onComplete={() => {}} />
+                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="elite" onComplete={() => {}} />
                 )}
                 {selectedEffectType === 'defeat_boss' && (
-                  <DefeatEffect key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="boss" onComplete={() => {}} />
+                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="boss" onComplete={() => {}} />
                 )}
+                {/* 報酬演出 */}
                 {selectedEffectType === 'psychedelic_normal' && (
                   <PsychedelicEffect key={effectKey} isBoss={false} />
                 )}
                 {selectedEffectType === 'psychedelic_boss' && (
                   <PsychedelicEffect key={effectKey} isBoss={true} />
-                )}
-                {/* SVG版ダメージエフェクト */}
-                {selectedEffectType === 'damage_svg' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={50} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_svg_100' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={100} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_svg_200' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={200} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_svg_300' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={300} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'defeat_normal_svg' && (
-                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="normal" onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'defeat_elite_svg' && (
-                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="elite" onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'defeat_boss_svg' && (
-                  <DefeatEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} enemyType="boss" onComplete={() => {}} />
                 )}
               </>
             )}
@@ -751,17 +714,46 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
         {/* エフェクト表示 */}
         {showingEffect && (
           <>
-            {selectedEffectType === 'damage' && (
-              <DamageEffect
+            {/* ダメージエフェクト */}
+            {selectedEffectType === 'damage_50' && (
+              <DamageEffectSvg
                 key={effectKey}
                 x={SCREEN_WIDTH / 2}
                 y={SCREEN_HEIGHT / 3}
-                damage={150}
+                damage={50}
                 onComplete={() => {}}
               />
             )}
+            {selectedEffectType === 'damage_100' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={100}
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'damage_200' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={200}
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'damage_300' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={300}
+                onComplete={() => {}}
+              />
+            )}
+            {/* 撃破エフェクト */}
             {selectedEffectType === 'defeat_normal' && (
-              <DefeatEffect
+              <DefeatEffectSvg
                 key={effectKey}
                 x={SCREEN_WIDTH / 2}
                 y={SCREEN_HEIGHT / 3}
@@ -770,7 +762,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               />
             )}
             {selectedEffectType === 'defeat_elite' && (
-              <DefeatEffect
+              <DefeatEffectSvg
                 key={effectKey}
                 x={SCREEN_WIDTH / 2}
                 y={SCREEN_HEIGHT / 3}
@@ -779,7 +771,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               />
             )}
             {selectedEffectType === 'defeat_boss' && (
-              <DefeatEffect
+              <DefeatEffectSvg
                 key={effectKey}
                 x={SCREEN_WIDTH / 2}
                 y={SCREEN_HEIGHT / 3}
@@ -787,6 +779,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                 onComplete={() => {}}
               />
             )}
+            {/* 報酬演出 */}
             {selectedEffectType === 'psychedelic_normal' && (
               <PsychedelicEffect
                 key={effectKey}
@@ -797,70 +790,6 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
               <PsychedelicEffect
                 key={effectKey}
                 isBoss={true}
-              />
-            )}
-            {/* SVG版ダメージエフェクト */}
-            {selectedEffectType === 'damage_svg' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={50}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_svg_100' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={100}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_svg_200' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={200}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_svg_300' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={300}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'defeat_normal_svg' && (
-              <DefeatEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                enemyType="normal"
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'defeat_elite_svg' && (
-              <DefeatEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                enemyType="elite"
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'defeat_boss_svg' && (
-              <DefeatEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                enemyType="boss"
-                onComplete={() => {}}
               />
             )}
           </>
@@ -1024,11 +953,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 4,
-  },
-  svgChip: {
-    backgroundColor: 'rgba(200, 150, 50, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(200, 150, 50, 0.3)',
   },
   effectChipActive: {
     backgroundColor: '#5a3a8a',
