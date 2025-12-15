@@ -356,6 +356,9 @@ export const getCardDescription = (
   // ギャンブルカードはランダム範囲を表示
   const isGamble = (card as any).isGamble;
 
+  // 同じタイプの効果をカウント（連撃対応）
+  const effectCounts: Record<string, { count: number; value: number; target?: string }> = {};
+
   for (const effect of card.effects) {
     // ランダム範囲がある場合（ギャンブルカード）
     const randomRange = (effect as any).randomRange;
@@ -368,10 +371,18 @@ export const getCardDescription = (
           descriptions.push(`🎲${prefix}${randomRange[0]}〜${randomRange[1]}ダメージ`);
         } else {
           const damage = calculateDamage(effect.value, playerStatuses, []);
-          if (effect.target === 'all_enemies') {
-            descriptions.push(`全体${damage}ダメージ`);
+          const key = `damage_${effect.target}`;
+          if (effectCounts[key] && effectCounts[key].value === damage) {
+            effectCounts[key].count++;
+          } else if (!effectCounts[key]) {
+            effectCounts[key] = { count: 1, value: damage, target: effect.target };
           } else {
-            descriptions.push(`${damage}ダメージ`);
+            // 異なる値のダメージは別々に表示
+            if (effect.target === 'all_enemies') {
+              descriptions.push(`全体${damage}ダメージ`);
+            } else {
+              descriptions.push(`${damage}ダメージ`);
+            }
           }
         }
         break;
@@ -421,6 +432,18 @@ export const getCardDescription = (
         const target = effect.target === 'all_enemies' ? '全体' : '敵';
         descriptions.push(`${target}${debuffName}+${effect.value}`);
         break;
+    }
+  }
+
+  // 連撃などの同一ダメージをまとめて表示
+  for (const [key, data] of Object.entries(effectCounts)) {
+    if (key.startsWith('damage_')) {
+      const prefix = data.target === 'all_enemies' ? '全体' : '';
+      if (data.count > 1) {
+        descriptions.unshift(`${prefix}${data.value}x${data.count}ダメージ`);
+      } else {
+        descriptions.unshift(`${prefix}${data.value}ダメージ`);
+      }
     }
   }
 

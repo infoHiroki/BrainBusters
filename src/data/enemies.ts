@@ -9,7 +9,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 1,
     name: '疑念の影',
-    maxHp: [30, 42],  // 1.5x
+    maxHp: [45, 63],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -20,7 +20,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 2,
     name: '迷妄',
-    maxHp: [27, 36],  // 1.5x
+    maxHp: [40, 54],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -32,7 +32,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 3,
     name: '怠惰の具現',
-    maxHp: [38, 48],  // 1.5x
+    maxHp: [57, 72],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -44,7 +44,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 4,
     name: '小さな恐怖',
-    maxHp: [23, 30],  // 1.5x
+    maxHp: [34, 45],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -55,7 +55,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 5,
     name: '偏見の塊',
-    maxHp: [33, 42],  // 1.5x
+    maxHp: [49, 63],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -68,7 +68,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 6,
     name: '虚栄の鏡',
-    maxHp: [45, 57],  // 1.5x
+    maxHp: [67, 85],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -80,7 +80,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 7,
     name: '矛盾の怪物',
-    maxHp: [53, 63],  // 1.5x
+    maxHp: [79, 94],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -92,7 +92,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 8,
     name: '後悔の亡霊',
-    maxHp: [42, 53],  // 1.5x
+    maxHp: [63, 79],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -104,7 +104,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 9,
     name: '傲慢の化身',
-    maxHp: [48, 60],  // 1.5x
+    maxHp: [72, 90],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -116,7 +116,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 10,
     name: 'ニヒリズムの使徒',
-    maxHp: [39, 50],  // 1.5x
+    maxHp: [58, 75],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -130,7 +130,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 11,
     name: '絶望の深淵',
-    maxHp: [60, 75],  // 1.5x
+    maxHp: [90, 112],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -142,7 +142,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 12,
     name: 'カオスの精霊',
-    maxHp: [57, 69],  // 1.5x
+    maxHp: [85, 103],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -155,7 +155,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 13,
     name: '時間の狂気',
-    maxHp: [63, 78],  // 1.5x
+    maxHp: [94, 117],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -167,7 +167,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 14,
     name: '実存の危機',
-    maxHp: [68, 83],  // 1.5x
+    maxHp: [102, 124],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -179,7 +179,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 15,
     name: '無意識の怪物',
-    maxHp: [72, 87],  // 1.5x
+    maxHp: [108, 130],  // 1.5x (再)
     isBoss: false,
     isElite: false,
     moves: [
@@ -193,7 +193,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 16,
     name: '形而上の亡霊',
-    maxHp: [80, 95],
+    maxHp: [120, 142],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -205,7 +205,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 17,
     name: '認識論の悪魔',
-    maxHp: [75, 90],
+    maxHp: [112, 135],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -217,7 +217,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 18,
     name: '決定論の鎖',
-    maxHp: [85, 100],
+    maxHp: [127, 150],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -231,7 +231,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 19,
     name: '自由意志の幻影',
-    maxHp: [90, 110],
+    maxHp: [135, 165],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -243,7 +243,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 20,
     name: '弁証法の螺旋',
-    maxHp: [95, 115],
+    maxHp: [142, 172],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -256,7 +256,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 21,
     name: '真理の番人',
-    maxHp: [100, 120],
+    maxHp: [150, 180],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -270,7 +270,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 22,
     name: '無限の深淵',
-    maxHp: [110, 130],
+    maxHp: [165, 195],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -282,7 +282,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 23,
     name: '相対主義の霧',
-    maxHp: [105, 125],
+    maxHp: [157, 187],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -294,7 +294,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 24,
     name: '本質の守護者',
-    maxHp: [115, 135],
+    maxHp: [172, 202],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -306,7 +306,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 25,
     name: '存在論の亡霊',
-    maxHp: [120, 140],
+    maxHp: [180, 210],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -318,7 +318,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 26,
     name: '因果律の鎖',
-    maxHp: [125, 145],
+    maxHp: [187, 217],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -332,7 +332,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 27,
     name: '絶対知の化身',
-    maxHp: [135, 155],
+    maxHp: [202, 232],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -344,7 +344,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 28,
     name: '超越論的主観',
-    maxHp: [140, 160],
+    maxHp: [210, 240],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -356,7 +356,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 29,
     name: '究極の懐疑',
-    maxHp: [145, 165],
+    maxHp: [217, 247],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -368,7 +368,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 30,
     name: '根源的存在',
-    maxHp: [150, 170],
+    maxHp: [225, 255],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -381,7 +381,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 31,
     name: '意味の崩壊',
-    maxHp: [155, 175],
+    maxHp: [232, 262],  // 1.5x
     isBoss: false,
     isElite: false,
     moves: [
@@ -395,7 +395,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 101,
     name: 'デカルトの悪霊',
-    maxHp: [75, 90],  // 1.5x
+    maxHp: [112, 135],  // 1.5x (再)
     isBoss: false,
     isElite: true,
     moves: [
@@ -407,7 +407,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 102,
     name: 'プラトンの影',
-    maxHp: [83, 98],  // 1.5x
+    maxHp: [124, 147],  // 1.5x (再)
     isBoss: false,
     isElite: true,
     moves: [
@@ -419,7 +419,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 103,
     name: 'ニーチェの超人',
-    maxHp: [90, 108],  // 1.5x
+    maxHp: [135, 162],  // 1.5x (再)
     isBoss: false,
     isElite: true,
     moves: [
@@ -431,7 +431,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 104,
     name: 'カントの純粋理性',
-    maxHp: [100, 120],
+    maxHp: [150, 180],  // 1.5x
     isBoss: false,
     isElite: true,
     moves: [
@@ -443,7 +443,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 105,
     name: 'ショーペンハウアーの意志',
-    maxHp: [110, 130],
+    maxHp: [165, 195],  // 1.5x
     isBoss: false,
     isElite: true,
     moves: [
@@ -455,7 +455,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 106,
     name: 'スピノザの神',
-    maxHp: [120, 140],
+    maxHp: [180, 210],  // 1.5x
     isBoss: false,
     isElite: true,
     moves: [
@@ -470,7 +470,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 201,
     name: '虚無',
-    maxHp: 150,  // 1.5x
+    maxHp: 225,  // 1.5x (再)
     isBoss: true,
     isElite: false,
     moves: [
@@ -483,7 +483,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 202,
     name: '永劫回帰',
-    maxHp: 180,  // 1.5x
+    maxHp: 270,  // 1.5x (再)
     isBoss: true,
     isElite: false,
     moves: [
@@ -496,7 +496,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 203,
     name: '絶対精神',
-    maxHp: 225,  // 1.5x
+    maxHp: 337,  // 1.5x (再)
     isBoss: true,
     isElite: false,
     moves: [
@@ -510,7 +510,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 204,
     name: '存在と時間',
-    maxHp: 280,
+    maxHp: 420,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -524,7 +524,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 205,
     name: '世界精神',
-    maxHp: 350,
+    maxHp: 525,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -540,7 +540,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 206,
     name: '懐疑の淵',
-    maxHp: 120,
+    maxHp: 180,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -552,7 +552,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 207,
     name: '二元論の裂け目',
-    maxHp: 165,
+    maxHp: 247,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -565,7 +565,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 208,
     name: '功利の天秤',
-    maxHp: 200,
+    maxHp: 300,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -578,7 +578,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 209,
     name: '意志の深淵',
-    maxHp: 255,
+    maxHp: 382,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [
@@ -591,7 +591,7 @@ export const enemyTemplates: EnemyTemplate[] = [
   {
     id: 210,
     name: '言語の牢獄',
-    maxHp: 315,
+    maxHp: 472,  // 1.5x
     isBoss: true,
     isElite: false,
     moves: [

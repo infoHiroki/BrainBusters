@@ -562,7 +562,7 @@ export const PsychedelicEffect: React.FC<PsychedelicEffectProps> = ({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
+    zIndex: 0,  // 最背面（他のUI要素より低く）
     alignItems: 'center',
     overflow: 'hidden',
   },
@@ -612,10 +612,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     borderRadius: 2,
-    zIndex: 10,
+    zIndex: 1,  // コンテナ内で低め（親のzIndexに収まる）
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    // elevation削除: Androidでz-orderingに影響を与えるため
   },
 });

@@ -188,6 +188,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [usedStockIndices, setUsedStockIndices] = useState<number[]>([]);
   const [currentRunState, setCurrentRunState] = useState<RunState>(runState);
   const [showRelicsPanel, setShowRelicsPanel] = useState(false);
+  const [battleWon, setBattleWon] = useState(false);  // 勝利フラグ（カード選択防止用）
 
   // コンボシステム
   const [turnTracker, setTurnTracker] = useState<TurnCardTracker>(createTurnTracker());
@@ -644,7 +645,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // カードを選択
   const handleCardSelect = (index: number) => {
-    if (isProcessing || turnPhase !== 'player') return;
+    if (isProcessing || turnPhase !== 'player' || battleWon) return;
 
     const cardInstance = hand[index];
     const card = cardInstance.card;
@@ -741,8 +742,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // ストックカードを実行（インデックス指定）
   const executeStockCard = async (card: Card, enemyIndex: number, stockIndex: number) => {
-    // 同期的にフラグをチェック（連打防止）
-    if (!battleState || isProcessingRef.current) return;
+    // 同期的にフラグをチェック（連打防止・勝利後の操作防止）
+    if (!battleState || isProcessingRef.current || battleWon) return;
     isProcessingRef.current = true;
 
     setIsProcessing(true);
@@ -757,19 +758,39 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       currentRunState.maxHp
     );
 
-    // フローティングダメージを表示
+    // フローティングダメージを表示（連撃対応）
     if (result.damageDealt.length > 0) {
       const totalDamage = result.damageDealt.reduce((a, b) => a + b, 0);
-      result.damageDealt.forEach((damage, i) => {
-        if (damage > 0) {
-          const targetIndex = card.effects.some(e => e.target === 'all_enemies') ? i : enemyIndex;
-          const xOffset = SCREEN_WIDTH / 2 + (targetIndex - (battleState.enemies.length - 1) / 2) * 160;
-          addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+      const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
 
-          // ダメージエフェクト（50+で火花、100+で爆発）
-          addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
-        }
-      });
+      if (isAllTarget) {
+        // 全体攻撃
+        let damageIndex = 0;
+        battleState.enemies.forEach((originalEnemy, enemyIdx) => {
+          if (originalEnemy.hp > 0 && damageIndex < result.damageDealt.length) {
+            const damage = result.damageDealt[damageIndex];
+            damageIndex++;
+            if (damage > 0) {
+              const xOffset = SCREEN_WIDTH / 2 + (enemyIdx - (battleState.enemies.length - 1) / 2) * 160;
+              addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+              addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
+            }
+          }
+        });
+      } else {
+        // 単体攻撃（連撃対応：300ms間隔）
+        result.damageDealt.forEach((damage, hitIndex) => {
+          if (damage > 0) {
+            const xOffset = SCREEN_WIDTH / 2 + (enemyIndex - (battleState.enemies.length - 1) / 2) * 160;
+            const delay = hitIndex * 300;
+            const yOffset = SCREEN_HEIGHT * 0.3 - hitIndex * 30;
+            setTimeout(() => {
+              addFloatingNumber(damage, 'damage', xOffset, yOffset);
+              addDamageEffect(damage, xOffset, yOffset);
+            }, delay);
+          }
+        });
+      }
       showMessage(`📦 ${card.name}: ${totalDamage}ダメージ！`, 'center');
     }
 
@@ -781,20 +802,38 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       showMessage(`📦 ${card.name}: 防御力+${blockGained}！`);
     }
 
-    // 敵へのダメージアニメーション
+    // 敵へのダメージアニメーション（連撃対応：300ms間隔）
     if (result.damageDealt.length > 0) {
       const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
-      result.enemies.forEach((enemy, i) => {
-        const tookDamage = isAllTarget || i === enemyIndex;
-        if (tookDamage && enemy.hp >= 0 && shakeAnims[i]) {
-          Animated.sequence([
-            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
-          ]).start();
-        }
-      });
+
+      if (!isAllTarget) {
+        // 単体攻撃の連撃：各ヒットごとに揺れを発生
+        result.damageDealt.forEach((damage, hitIndex) => {
+          if (damage > 0 && result.enemies[enemyIndex]?.hp > 0 && shakeAnims[enemyIndex]) {
+            const delay = hitIndex * 300;
+            setTimeout(() => {
+              Animated.sequence([
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 1, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: -1, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+              ]).start();
+            }, delay);
+          }
+        });
+      } else {
+        // 全体攻撃：一度だけ揺れる
+        result.enemies.forEach((enemy, i) => {
+          if (enemy.hp > 0 && shakeAnims[i]) {
+            Animated.sequence([
+              Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+            ]).start();
+          }
+        });
+      }
     }
 
     // 状態を更新
@@ -877,6 +916,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 勝利判定
     if (isBattleWon({ ...battleState, enemies: result.enemies })) {
+      // 勝利フラグを立てる（カード選択を防止）
+      setBattleWon(true);
       // ボス撃破時は長めの遅延（エフェクト完了まで）
       const hasBossKill = result.enemiesKilled.some(idx => battleState.enemies[idx]?.isBoss);
       const victoryDelay = hasBossKill ? 2200 : 900;
@@ -898,8 +939,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // カードを使用
   const useSelectedCard = async (cardIndex: number, enemyIndex: number = targetEnemyIndex) => {
-    // 同期的にフラグをチェック（連打防止）
-    if (!battleState || isProcessingRef.current) return;
+    // 同期的にフラグをチェック（連打防止・勝利後の操作防止）
+    if (!battleState || isProcessingRef.current || battleWon) return;
     isProcessingRef.current = true;
 
     const cardInstance = hand[cardIndex];
@@ -936,17 +977,38 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // フローティングダメージを表示（敵へのダメージ）
     if (result.damageDealt.length > 0) {
       const totalDamage = result.damageDealt.reduce((a, b) => a + b, 0);
-      result.damageDealt.forEach((damage, i) => {
-        if (damage > 0) {
-          // 敵の位置に応じてX座標を調整
-          const targetIndex = card.effects.some(e => e.target === 'all_enemies') ? i : enemyIndex;
-          const xOffset = SCREEN_WIDTH / 2 + (targetIndex - (battleState.enemies.length - 1) / 2) * 160;
-          addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+      const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
 
-          // ダメージエフェクト（50+で火花、100+で爆発）
-          addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
-        }
-      });
+      if (isAllTarget) {
+        // 全体攻撃: 生存敵のみにダメージ表示（インデックスを正しく対応させる）
+        let damageIndex = 0;
+        battleState.enemies.forEach((originalEnemy, enemyIdx) => {
+          // 攻撃前に生存していた敵のみ（死亡敵はスキップされている）
+          if (originalEnemy.hp > 0 && damageIndex < result.damageDealt.length) {
+            const damage = result.damageDealt[damageIndex];
+            damageIndex++;
+            if (damage > 0) {
+              const xOffset = SCREEN_WIDTH / 2 + (enemyIdx - (battleState.enemies.length - 1) / 2) * 160;
+              addFloatingNumber(damage, 'damage', xOffset, SCREEN_HEIGHT * 0.3);
+              addDamageEffect(damage, xOffset, SCREEN_HEIGHT * 0.3);
+            }
+          }
+        });
+      } else {
+        // 単体攻撃（連撃対応：時間差とY位置をずらして表示）
+        result.damageDealt.forEach((damage, hitIndex) => {
+          if (damage > 0) {
+            const xOffset = SCREEN_WIDTH / 2 + (enemyIndex - (battleState.enemies.length - 1) / 2) * 160;
+            // 連撃の場合、各ヒットを時間差で表示（人間が知覚できる間隔）
+            const delay = hitIndex * 300; // 300ms間隔
+            const yOffset = SCREEN_HEIGHT * 0.3 - hitIndex * 30; // 上にずらす
+            setTimeout(() => {
+              addFloatingNumber(damage, 'damage', xOffset, yOffset);
+              addDamageEffect(damage, xOffset, yOffset);
+            }, delay);
+          }
+        });
+      }
 
       // 攻撃メッセージは真ん中
       if (strengthBonus > 0) {
@@ -969,22 +1031,38 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       }
     }
 
-    // 敵にダメージを与えた場合のアニメーション（常に揺れる）
+    // 敵にダメージを与えた場合のアニメーション（連撃対応：各ヒットで揺れる）
     if (result.damageDealt.length > 0) {
       const isAllTarget = card.effects.some(e => e.target === 'all_enemies');
 
-      result.enemies.forEach((enemy, i) => {
-        // ダメージを受けた敵は揺れる
-        const tookDamage = isAllTarget || i === enemyIndex;
-        if (tookDamage && enemy.hp >= 0 && shakeAnims[i]) {
-          Animated.sequence([
-            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
-            Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
-          ]).start();
-        }
-      });
+      // 単体攻撃の連撃：各ヒットごとに揺れを発生
+      if (!isAllTarget) {
+        result.damageDealt.forEach((damage, hitIndex) => {
+          if (damage > 0 && result.enemies[enemyIndex]?.hp > 0 && shakeAnims[enemyIndex]) {
+            const delay = hitIndex * 300; // ダメージ表示と同じタイミング（300ms間隔）
+            setTimeout(() => {
+              Animated.sequence([
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 1, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: -1, duration: 80, useNativeDriver: true }),
+                Animated.timing(shakeAnims[enemyIndex], { toValue: 0, duration: 80, useNativeDriver: true }),
+              ]).start();
+            }, delay);
+          }
+        });
+      } else {
+        // 全体攻撃：一度だけ揺れる
+        result.enemies.forEach((enemy, i) => {
+          if (enemy.hp > 0 && shakeAnims[i]) {
+            Animated.sequence([
+              Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 1, duration: 80, useNativeDriver: true }),
+              Animated.timing(shakeAnims[i], { toValue: 0, duration: 80, useNativeDriver: true }),
+            ]).start();
+          }
+        });
+      }
     }
 
     // 状態を更新
@@ -1071,6 +1149,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     // 勝利判定
     if (isBattleWon({ ...battleState, enemies: result.enemies })) {
+      // 勝利フラグを立てる（カード選択を防止）
+      setBattleWon(true);
       // ボス撃破時は長めの遅延（エフェクト完了まで）
       const hasBossKill = result.enemiesKilled.some(idx => battleState.enemies[idx]?.isBoss);
       const victoryDelay = hasBossKill ? 2200 : 900;
@@ -1119,7 +1199,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   // ターン終了
   const handleEndTurn = () => {
-    if (isProcessing || turnPhase !== 'player' || !battleState) return;
+    if (isProcessing || turnPhase !== 'player' || !battleState || battleWon) return;
 
     setIsProcessing(true);
     setTurnPhase('enemy');
@@ -1198,10 +1278,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           // 敵のバフは上部
           showMessage(`${enemy.name}が自己強化！`, 'top');
           addFloatingNumber(actionResult.buffValue, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.25, '闘志');
+          addBuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.25);
         } else if (actionResult.actionType === 'debuff') {
           // 敵のデバフ（プレイヤーへの）は真ん中
           showMessage(`${enemy.name}が躊躇をかけてきた！`, 'center');
           addFloatingNumber(actionResult.debuffValue, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, '虚弱');
+          addDebuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
         } else {
           showMessage(`${enemy.name}は様子を見ている...`, 'top');
         }
@@ -1262,7 +1344,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         const attackDamage = enemy.intent.value || 0;
         // 敵の筋力バフを適用
         const strengthBuff = enemy.statuses.find(s => s.type === 'strength')?.stacks || 0;
-        const totalDamage = attackDamage + strengthBuff;
+        let totalDamage = attackDamage + strengthBuff;
+
+        // 敵の躊躇(weak)デバフを適用（与ダメージ25%減少）
+        const isEnemyWeak = enemy.statuses.some(s => s.type === 'weak');
+        if (isEnemyWeak) {
+          totalDamage = Math.floor(totalDamage * 0.75);
+        }
 
         // プレイヤーの脆弱を適用
         const isVulnerable = playerStatuses.some(s => s.type === 'vulnerable');
@@ -1387,10 +1475,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       intent: selectNextIntent(enemy),
     }));
 
+    // プレイヤーのステータス効果の持続ターン減少
+    let processedPlayerStatuses = playerStatuses.map(s => {
+      if (s.duration && s.duration > 1) {
+        return { ...s, duration: s.duration - 1 };
+      } else if (s.duration === 1) {
+        // 持続ターン切れ - スタックを0にしてフィルタで除去
+        return { ...s, stacks: 0 };
+      }
+      return s;
+    }).filter(s => s.stacks > 0);
+
     const newBattleState: BattleState = {
       ...battleState!,
       enemies: enemiesWithNewIntent,
-      playerStatuses,
+      playerStatuses: processedPlayerStatuses,
       turn: battleState!.turn + 1,
       playerBlock: 0,
       isPlayerTurn: true,
