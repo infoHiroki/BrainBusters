@@ -24,7 +24,7 @@ const SIDEBAR_WIDTH = 220;
 
 type DebugPhase = 'menu' | 'battle' | 'reward' | 'result' | 'effects';
 type TestMode = 'battle' | 'reward' | 'effects';
-type EffectType = 'psychedelic_normal' | 'psychedelic_boss' | 'damage_50' | 'damage_100' | 'damage_200' | 'damage_300' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss';
+type EffectType = 'psychedelic_normal' | 'psychedelic_boss' | 'damage_5' | 'damage_15' | 'damage_30' | 'damage_50' | 'defeat_normal' | 'defeat_elite' | 'defeat_boss';
 
 interface DebugScreenProps {
   onExit: () => void;
@@ -69,11 +69,11 @@ const TEST_PRESETS: TestPreset[] = [
   { id: 12, name: 'ボス報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 5, enemyCount: 1, hp: 70, stockCount: 0, description: 'レリック獲得' },
   { id: 13, name: 'ボス+満杯', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 25, enemyCount: 1, hp: 70, stockCount: 5, description: '25階ボス' },
   { id: 14, name: '最終報酬', category: 'reward', testMode: 'reward', nodeType: 'boss', floor: 50, enemyCount: 1, hp: 70, stockCount: 0, description: '50階ボス' },
-  // エフェクトテスト（ダメージ）
-  { id: 15, name: 'DMG 50', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '小ダメージ', effectType: 'damage_50' },
-  { id: 16, name: 'DMG 100', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '中ダメージ', effectType: 'damage_100' },
-  { id: 17, name: 'DMG 200', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '大ダメージ', effectType: 'damage_200' },
-  { id: 18, name: 'DMG 300', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '極大ダメージ', effectType: 'damage_300' },
+  // エフェクトテスト（ダメージ）- ゲームバランスに合わせた値
+  { id: 15, name: 'DMG 5', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '小ダメージ', effectType: 'damage_5' },
+  { id: 16, name: 'DMG 15', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '中ダメージ', effectType: 'damage_15' },
+  { id: 17, name: 'DMG 30', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '大ダメージ', effectType: 'damage_30' },
+  { id: 18, name: 'DMG 50', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '極大ダメージ', effectType: 'damage_50' },
   // エフェクトテスト（撃破）
   { id: 19, name: '撃破:通常', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: '通常敵撃破', effectType: 'defeat_normal' },
   { id: 20, name: '撃破:エリート', category: 'effects', testMode: 'effects', nodeType: 'battle', floor: 1, enemyCount: 1, hp: 70, stockCount: 0, description: 'エリート撃破', effectType: 'defeat_elite' },
@@ -93,7 +93,7 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
   const [testMode, setTestMode] = useState<TestMode>('battle');
 
   // エフェクトテスト用
-  const [selectedEffectType, setSelectedEffectType] = useState<EffectType>('damage_50');
+  const [selectedEffectType, setSelectedEffectType] = useState<EffectType>('damage_5');
   const [showingEffect, setShowingEffect] = useState<boolean>(false);
   const [effectKey, setEffectKey] = useState<number>(0);
 
@@ -391,28 +391,28 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
                   <Text style={styles.sidebarLabel}>ダメージ</Text>
                   <View style={styles.effectGrid}>
                     <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'damage_5' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_5'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>5</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'damage_15' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_15'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>15</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effectChip, selectedEffectType === 'damage_30' && styles.effectChipActive]}
+                      onPress={() => { setSelectedEffectType('damage_30'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
+                    >
+                      <Text style={styles.effectChipText}>30</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                       style={[styles.effectChip, selectedEffectType === 'damage_50' && styles.effectChipActive]}
                       onPress={() => { setSelectedEffectType('damage_50'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
                     >
                       <Text style={styles.effectChipText}>50</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'damage_100' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_100'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>100</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'damage_200' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_200'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>200</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.effectChip, selectedEffectType === 'damage_300' && styles.effectChipActive]}
-                      onPress={() => { setSelectedEffectType('damage_300'); setShowingEffect(false); setTimeout(() => { setEffectKey(k => k+1); setShowingEffect(true); }, 50); }}
-                    >
-                      <Text style={styles.effectChipText}>300</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -517,17 +517,17 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
             {testMode === 'effects' && showingEffect && (
               <>
                 {/* ダメージエフェクト */}
+                {selectedEffectType === 'damage_5' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={5} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'damage_15' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={15} onComplete={() => {}} />
+                )}
+                {selectedEffectType === 'damage_30' && (
+                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={30} onComplete={() => {}} />
+                )}
                 {selectedEffectType === 'damage_50' && (
                   <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={50} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_100' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={100} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_200' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={200} onComplete={() => {}} />
-                )}
-                {selectedEffectType === 'damage_300' && (
-                  <DamageEffectSvg key={effectKey} x={effectCenterX} y={effectCenterY} damage={300} onComplete={() => {}} />
                 )}
                 {/* 撃破エフェクト */}
                 {selectedEffectType === 'defeat_normal' && (
@@ -715,39 +715,39 @@ export const DebugScreen: React.FC<DebugScreenProps> = ({ onExit }) => {
         {showingEffect && (
           <>
             {/* ダメージエフェクト */}
+            {selectedEffectType === 'damage_5' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={5}
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'damage_15' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={15}
+                onComplete={() => {}}
+              />
+            )}
+            {selectedEffectType === 'damage_30' && (
+              <DamageEffectSvg
+                key={effectKey}
+                x={SCREEN_WIDTH / 2}
+                y={SCREEN_HEIGHT / 3}
+                damage={30}
+                onComplete={() => {}}
+              />
+            )}
             {selectedEffectType === 'damage_50' && (
               <DamageEffectSvg
                 key={effectKey}
                 x={SCREEN_WIDTH / 2}
                 y={SCREEN_HEIGHT / 3}
                 damage={50}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_100' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={100}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_200' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={200}
-                onComplete={() => {}}
-              />
-            )}
-            {selectedEffectType === 'damage_300' && (
-              <DamageEffectSvg
-                key={effectKey}
-                x={SCREEN_WIDTH / 2}
-                y={SCREEN_HEIGHT / 3}
-                damage={300}
                 onComplete={() => {}}
               />
             )}

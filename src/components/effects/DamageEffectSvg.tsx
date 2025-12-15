@@ -50,11 +50,11 @@ export const DamageEffectSvg: React.FC<DamageEffectSvgProps> = ({
   y,
   onComplete,
 }) => {
-  // ダメージレベル（5段階）
-  const isExtreme = damage >= 300;  // 極大ダメージ
-  const isMassive = damage >= 200;  // 超大ダメージ
-  const isHeavy = damage >= 100;    // 大ダメージ
-  const isMedium = damage >= 50;    // 中ダメージ
+  // ダメージレベル（5段階）- ゲームバランスに合わせた閾値
+  const isExtreme = damage >= 50;   // 極大ダメージ（50+）
+  const isMassive = damage >= 30;   // 超大ダメージ（30+）
+  const isHeavy = damage >= 15;     // 大ダメージ（15+）
+  const isMedium = damage >= 5;     // 中ダメージ（5+）
 
   // エネルギーリング（放射状に広がる）
   const ringCount = isExtreme ? 16 : isMassive ? 12 : isHeavy ? 8 : isMedium ? 5 : 3;

@@ -209,7 +209,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
 
     // 3. 崩壊リング
     ringAnims.forEach((anim, index) => {
-      const delay = index * 25;
+      const delay = index * 40;
       const direction = index % 2 === 0 ? 1 : -1;
       animations.push(
         Animated.sequence([
@@ -217,25 +217,25 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           Animated.parallel([
             Animated.timing(anim.scale, {
               toValue: 2 + index * 0.35,
-              duration: enemyType === 'boss' ? 600 : 500,
+              duration: enemyType === 'boss' ? 900 : 750,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.timing(anim.rotation, {
               toValue: direction * 0.3,
-              duration: 700,
+              duration: 1000,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.timing(anim.opacity, {
                 toValue: 0.5 - index * 0.03,
-                duration: 80,
+                duration: 120,
                 useNativeDriver: true
               }),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: enemyType === 'boss' ? 520 : 420,
+                duration: enemyType === 'boss' ? 780 : 630,
                 easing: Easing.in(Easing.quad),
                 useNativeDriver: true
               }),
@@ -247,7 +247,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
 
     // 4. フラグメント（飛散）
     fragmentAnims.forEach((anim, index) => {
-      const delay = index * 12;
+      const delay = index * 18;
       const data = fragmentData[index];
       animations.push(
         Animated.sequence([
@@ -255,13 +255,13 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           Animated.parallel([
             Animated.timing(anim.progress, {
               toValue: 1,
-              duration: 450,
+              duration: 680,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.timing(anim.rotation, {
               toValue: data.rotationSpeed,
-              duration: 550,
+              duration: 800,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true
             }),
@@ -274,20 +274,20 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
               }),
               Animated.timing(anim.scale, {
                 toValue: 0,
-                duration: 180,
+                duration: 280,
                 useNativeDriver: true
               }),
             ]),
             Animated.sequence([
               Animated.timing(anim.opacity, {
                 toValue: 0.7,
-                duration: 80,
+                duration: 120,
                 useNativeDriver: true
               }),
-              Animated.delay(250),
+              Animated.delay(380),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: 180,
+                duration: 280,
                 useNativeDriver: true
               }),
             ]),
@@ -298,27 +298,27 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
 
     // 5. パーティクル
     particleAnims.forEach((anim) => {
-      const delay = Math.random() * 40;
+      const delay = Math.random() * 60;
       animations.push(
         Animated.sequence([
           Animated.delay(delay),
           Animated.parallel([
             Animated.timing(anim.progress, {
               toValue: 1,
-              duration: 350 + Math.random() * 100,
+              duration: 520 + Math.random() * 150,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true
             }),
             Animated.sequence([
               Animated.timing(anim.opacity, {
                 toValue: 0.8,
-                duration: 40,
+                duration: 60,
                 useNativeDriver: true
               }),
-              Animated.delay(180),
+              Animated.delay(280),
               Animated.timing(anim.opacity, {
                 toValue: 0,
-                duration: 180,
+                duration: 280,
                 useNativeDriver: true
               }),
             ]),
@@ -339,7 +339,7 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
           }),
           Animated.timing(symbolScale, {
             toValue: 0,
-            duration: 300,
+            duration: 450,
             easing: Easing.in(Easing.cubic),
             useNativeDriver: true
           }),
@@ -347,19 +347,19 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
         Animated.sequence([
           Animated.timing(symbolOpacity, {
             toValue: 1,
-            duration: 80,
+            duration: 120,
             useNativeDriver: true
           }),
-          Animated.delay(280),
+          Animated.delay(420),
           Animated.timing(symbolOpacity, {
             toValue: 0,
-            duration: 200,
+            duration: 300,
             useNativeDriver: true
           }),
         ]),
         Animated.timing(symbolRotation, {
           toValue: enemyType === 'boss' ? 2 : 1,
-          duration: 650,
+          duration: 950,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true
         }),
@@ -445,8 +445,8 @@ export const DefeatEffectSvg: React.FC<DefeatEffectSvgProps> = ({
       setTimeout(onComplete, 100);
     });
 
-    // タイムアウト保証
-    const timeout = setTimeout(onComplete, enemyType === 'boss' ? 2000 : 800);
+    // タイムアウト保証（エフェクトが見えるよう延長）
+    const timeout = setTimeout(onComplete, enemyType === 'boss' ? 2500 : 1400);
     return () => clearTimeout(timeout);
   }, [enemyType, onComplete]);
 
