@@ -25,6 +25,7 @@ import {
   isBattleLost,
   useStockCard,
 } from '../store/runStore';
+import { selectNextIntent as selectNextIntentFromTemplate } from '../data/enemies';
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
 import { GAME_CONFIG } from '../types/game';
 import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
@@ -1252,44 +1253,44 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           updatedEnemies[enemyArrayIndex] = actionResult.updatedEnemy;
         }
 
-        // ダメージ表示（攻撃力・ブロック・最終ダメージを別々に表示）
+        // ダメージ表示（1つのメッセージに統合して重複を防ぐ）
         const damageTaken = prevHp - currentHp;
         const blocked = actionResult.blocked;
         const attackValue = actionResult.attackValue;
 
         if (attackValue > 0) {
-          // 攻撃行動の場合: 真ん中に表示
-          showMessage(`${enemy.name}: ⚔️攻撃 ${attackValue}`, 'center');
-
-          if (blocked > 0) {
-            // ブロックは自分の防御なので下部
-            showMessage(`🛡️ブロック ${blocked}`, 'bottom');
-            addFloatingNumber(blocked, 'blocked', SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT * 0.65);
-          }
-
-          if (damageTaken > 0) {
-            // ダメージは攻撃の結果なので真ん中
-            showMessage(`💥${damageTaken}ダメージ！`, 'center');
-            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2 + 30, SCREEN_HEIGHT * 0.7);
+          // 攻撃行動の場合: 統合メッセージで表示
+          if (damageTaken > 0 && blocked > 0) {
+            // ブロックしたがダメージも受けた
+            showMessage(`${enemy.name}の攻撃! 🛡️${blocked}防御 → 💥${damageTaken}ダメージ`, 'center');
+            addFloatingNumber(blocked, 'blocked', SCREEN_WIDTH / 2 - 40, SCREEN_HEIGHT * 0.65);
+            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT * 0.7);
+            playSound('damage');
+          } else if (damageTaken > 0) {
+            // ブロックなしでダメージを受けた
+            showMessage(`${enemy.name}の攻撃! 💥${damageTaken}ダメージ`, 'center');
+            addFloatingNumber(damageTaken, 'damage', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.7);
             playSound('damage');
           } else if (blocked > 0) {
-            showMessage(`✨完全防御！`, 'bottom');
+            // 完全防御
+            showMessage(`${enemy.name}の攻撃! ✨完全防御(${blocked})`, 'center');
+            addFloatingNumber(blocked, 'blocked', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
           }
         } else if (actionResult.actionType === 'defend') {
-          // 敵の防御は上部
-          showMessage(`${enemy.name}が防御態勢！`, 'top');
+          // 敵の防御
+          showMessage(`${enemy.name}が防御態勢！`, 'center');
         } else if (actionResult.actionType === 'buff') {
-          // 敵のバフは上部
-          showMessage(`${enemy.name}が自己強化！`, 'top');
+          // 敵のバフ
+          showMessage(`${enemy.name}が自己強化！`, 'center');
           addFloatingNumber(actionResult.buffValue, 'buff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.25, '闘志');
           addBuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.25);
         } else if (actionResult.actionType === 'debuff') {
-          // 敵のデバフ（プレイヤーへの）は真ん中
+          // 敵のデバフ（プレイヤーへの）
           showMessage(`${enemy.name}が躊躇をかけてきた！`, 'center');
           addFloatingNumber(actionResult.debuffValue, 'debuff', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, '虚弱');
           addDebuffEffect(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65);
         } else {
-          showMessage(`${enemy.name}は様子を見ている...`, 'top');
+          showMessage(`${enemy.name}は様子を見ている...`, 'center');
         }
 
         // HP更新（リアルタイム表示）
@@ -1298,9 +1299,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
         // 敗北判定
         if (currentHp <= 0) {
+          // 敗北時の詳細情報を表示
+          const finalDamage = prevHp;  // 残りHPが全て削られた
+          showMessage(`💀 ${enemy.name}の攻撃で倒れた...`, 'center');
+
+          // 画面を赤くフラッシュ
+          triggerScreenShake(20, 500);
+
+          // より長い遅延を入れて状況を把握させる
           setTimeout(() => {
             handleBattleEnd(false);
-          }, 500);
+          }, 1500);
           return;
         }
 
@@ -1506,26 +1515,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     checkBattleEndAndContinue({ hp: finalHp, battleState: newBattleState });
   };
 
-  // 次の敵行動を選択（runStoreからインポートできない場合はここで定義）
-  const selectNextIntent = (_enemy: Enemy): Enemy['intent'] => {
-    const patterns: Array<{ type: 'attack' | 'defend' | 'buff' | 'debuff'; value: number; weight: number }> = [
-      { type: 'attack', value: 8, weight: 60 },
-      { type: 'defend', value: 5, weight: 20 },
-      { type: 'buff', value: 2, weight: 10 },
-      { type: 'debuff', value: 2, weight: 10 },
-    ];
-
-    const totalWeight = patterns.reduce((sum: number, p) => sum + (p.weight || 1), 0);
-    let random = Math.random() * totalWeight;
-
-    for (const pattern of patterns) {
-      random -= pattern.weight || 1;
-      if (random <= 0) {
-        return { type: pattern.type, value: pattern.value };
-      }
-    }
-
-    return patterns[0];
+  // 次の敵行動を選択（敵テンプレートから正しく選択）
+  const selectNextIntent = (enemy: Enemy): Enemy['intent'] => {
+    return selectNextIntentFromTemplate(enemy);
   };
 
   // 敵ターン終了後の処理
