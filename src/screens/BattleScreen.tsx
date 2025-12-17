@@ -25,6 +25,7 @@ import {
 } from '../store/runStore';
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
 import { cards, regenerateCards } from '../data/cards';
+import { selectNextIntent as selectNextIntentFromTemplate } from '../data/enemies';
 import { GAME_CONFIG } from '../types/game';
 import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 import { ComboResult } from '../types/tags';
@@ -1551,26 +1552,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     checkBattleEndAndContinue({ hp: finalHp, battleState: newBattleState });
   };
 
-  // 次の敵行動を選択（runStoreからインポートできない場合はここで定義）
-  const selectNextIntent = (_enemy: Enemy): Enemy['intent'] => {
-    const patterns: Array<{ type: 'attack' | 'defend' | 'buff' | 'debuff'; value: number; weight: number }> = [
-      { type: 'attack', value: 8, weight: 60 },
-      { type: 'defend', value: 5, weight: 20 },
-      { type: 'buff', value: 2, weight: 10 },
-      { type: 'debuff', value: 2, weight: 10 },
-    ];
-
-    const totalWeight = patterns.reduce((sum: number, p) => sum + (p.weight || 1), 0);
-    let random = Math.random() * totalWeight;
-
-    for (const pattern of patterns) {
-      random -= pattern.weight || 1;
-      if (random <= 0) {
-        return { type: pattern.type, value: pattern.value };
-      }
-    }
-
-    return patterns[0];
+  // 次の敵行動を選択（敵テンプレートから正しく選択）
+  const selectNextIntent = (enemy: Enemy): Enemy['intent'] => {
+    return selectNextIntentFromTemplate(enemy);
   };
 
   // 敵ターン終了後の処理
