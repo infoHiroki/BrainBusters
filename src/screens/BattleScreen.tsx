@@ -17,8 +17,6 @@ import { BattleCard } from '../components/BattleCard';
 import { EnemyDisplay } from '../components/EnemyDisplay';
 import {
   initBattleState,
-  shuffleDeck,
-  drawCards,
   playCard,
   processEnemyTurn,
   isBattleWon,
@@ -26,6 +24,7 @@ import {
   useStockCard,
 } from '../store/runStore';
 import { playCardEffects, canPlayCard } from '../utils/cardEffects';
+import { cards, regenerateCards } from '../data/cards';
 import { GAME_CONFIG } from '../types/game';
 import { playSound, playVictoryFanfare, initializeSound } from '../utils/sound';
 import { ComboResult } from '../types/tags';
@@ -249,6 +248,59 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   // 特殊エフェクトのオフセットカウンター（重なり防止）
   const specialEffectCountRef = useRef(0);
 
+  // 全カードプールからランダムに手札を生成
+  const generateRandomHand = (count: number): CardInstance[] => {
+    // カードプールを再生成して完全ランダム化
+    regenerateCards();
+
+    const hand: CardInstance[] = [];
+    const usedIds = new Set<number>();
+
+    // レアリティ4以下から選択（バランス調整）
+    const availableCards = cards.filter(c => c.rarity <= 4);
+
+    for (let i = 0; i < count; i++) {
+      // 重複を避けつつランダム選択
+      const candidates = availableCards.filter(c => !usedIds.has(c.id));
+      if (candidates.length === 0) break;
+
+      const randomCard = candidates[Math.floor(Math.random() * candidates.length)];
+      usedIds.add(randomCard.id);
+
+      hand.push({
+        instanceId: `random_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        card: randomCard,
+      });
+    }
+
+    return hand;
+  };
+
+  // 既存の手札にランダムカードを追加
+  const addRandomCardsToHand = (currentHand: CardInstance[], count: number): CardInstance[] => {
+    regenerateCards();
+
+    const newCards: CardInstance[] = [];
+    const usedIds = new Set(currentHand.map(c => c.card.id));
+
+    const availableCards = cards.filter(c => c.rarity <= 4);
+
+    for (let i = 0; i < count; i++) {
+      const candidates = availableCards.filter(c => !usedIds.has(c.id));
+      if (candidates.length === 0) break;
+
+      const randomCard = candidates[Math.floor(Math.random() * candidates.length)];
+      usedIds.add(randomCard.id);
+
+      newCards.push({
+        instanceId: `random_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        card: randomCard,
+      });
+    }
+
+    return [...currentHand, ...newCards];
+  };
+
   // バトル初期化
   useEffect(() => {
     const initBattle = () => {
@@ -261,26 +313,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         shakeAnims.push(new Animated.Value(0));
       });
 
-      // デッキをシャッフル
-      const shuffled = shuffleDeck([...runState.deck]);
-      setDrawPile(shuffled);
+      // 完全ランダム式: デッキは使わない
+      setDrawPile([]);
       setDiscardPile([]);
       setHand([]);
 
-      // 最初の手札を引く
+      // 最初の手札をランダム生成
       setTimeout(() => {
-        drawInitialHand(shuffled);
+        const randomHand = generateRandomHand(GAME_CONFIG.STARTING_HAND_SIZE);
+        setHand(randomHand);
+        setTurnPhase('player');
       }, 500);
     };
 
     initBattle();
   }, []);
 
-  // 初期手札を引く
-  const drawInitialHand = (pile: CardInstance[]) => {
-    const result = drawCards(pile, [], [], GAME_CONFIG.STARTING_HAND_SIZE);
-    setHand(result.hand);
-    setDrawPile(result.drawPile);
+  // 初期手札を引く（使用しないが互換性のため残す）
+  const drawInitialHand = (_pile: CardInstance[]) => {
+    const randomHand = generateRandomHand(GAME_CONFIG.STARTING_HAND_SIZE);
+    setHand(randomHand);
     setTurnPhase('player');
   };
 
@@ -530,11 +582,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           break;
 
         case 'draw':
-          // カードドロー
-          const drawResult = drawCards(drawPile, discardPile, hand, value);
-          setHand(drawResult.hand);
-          setDrawPile(drawResult.drawPile);
-          setDiscardPile(drawResult.discardPile);
+          // カードドロー（完全ランダム式）
+          const newHandDraw = addRandomCardsToHand(hand, value);
+          setHand(newHandDraw);
           showMessage(`${combo.combo.name}: ${value}枚ドロー！`);  // 下部（デフォルト）
           break;
 
@@ -898,13 +948,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       });
     }
 
-    // 追加ドロー
+    // 追加ドロー（完全ランダム式）
     if (result.cardsDrawn > 0) {
       addFloatingNumber(result.cardsDrawn, 'draw', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
-      const drawResult = drawCards(drawPile, discardPile, hand, result.cardsDrawn);
-      setHand(drawResult.hand);
-      setDrawPile(drawResult.drawPile);
-      setDiscardPile(drawResult.discardPile);
+      const newHand = addRandomCardsToHand(hand, result.cardsDrawn);
+      setHand(newHand);
     }
 
     // エネルギー獲得
@@ -1135,15 +1183,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // コンボチェック（カード使用後）
     checkAndTriggerCombos(card, cardInstance.instanceId);
 
-    // 追加ドロー
+    // 追加ドロー（完全ランダム式）
     let finalHand = playResult.hand;
     if (result.cardsDrawn > 0) {
       addFloatingNumber(result.cardsDrawn, 'draw', SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.5);
-      const drawResult = drawCards(drawPile, playResult.discardPile, playResult.hand, result.cardsDrawn);
-      setHand(drawResult.hand);
-      setDrawPile(drawResult.drawPile);
-      setDiscardPile(drawResult.discardPile);
-      finalHand = drawResult.hand;
+      finalHand = addRandomCardsToHand(playResult.hand, result.cardsDrawn);
+      setHand(finalHand);
     }
 
     // エネルギー獲得
@@ -1587,13 +1632,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     // ターンカウント増加
     setBattleState(prev => prev ? { ...prev, turn: prev.turn + 1 } : prev);
 
-    // カードを引く
+    // カードを引く（完全ランダム式）
     setTurnPhase('draw');
     setTimeout(() => {
-      const result = drawCards(drawPile, [...discardPile, ...hand], [], GAME_CONFIG.STARTING_HAND_SIZE);
-      setHand(result.hand);
-      setDrawPile(result.drawPile);
-      setDiscardPile(result.discardPile);
+      const randomHand = generateRandomHand(GAME_CONFIG.STARTING_HAND_SIZE);
+      setHand(randomHand);
+      // デッキは使用しない
+      setDrawPile([]);
+      setDiscardPile([]);
       setTurnPhase('player');
       setIsProcessing(false);
       isProcessingRef.current = false;
